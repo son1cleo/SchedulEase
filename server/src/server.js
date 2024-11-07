@@ -1,21 +1,20 @@
 const express = require('express');
-const app = express();
-
 const mongoose = require('mongoose');
-require('dotenv').config(); // Load environment variables from .env file
+const dotenv = require('dotenv');
+const authRoutes = require('./controllers/authController');
 
-// Use the environment variable for the MongoDB connection string
-mongoose.connect(process.env.MONGO_URI).then(function () {
-    app.get("/", function (req, res) {
-        res.send("This is the home page");
-    });
-}).catch(err => {
-    console.log('Failed to connect to MongoDB', err);
-});
+dotenv.config();
 
-// Get the port from environment variables or use default (5000)
-const port = process.env.PORT;
+const app = express();
+app.use(express.json());
 
-app.listen(port, function () {
+// Initialize database connection using Singleton pattern
+require('./config/db');
+
+// Use authentication routes
+app.use('/auth', authRoutes);
+
+const port = process.env.PORT || 5000;
+app.listen(port, () => {
     console.log(`Server Started at http://127.0.0.1:${port}/`);
 });
