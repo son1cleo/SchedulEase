@@ -1,20 +1,18 @@
 const express = require('express');
-const mongoose = require('mongoose');
-const dotenv = require('dotenv');
 const authRoutes = require('./controllers/authController');
-
-dotenv.config();
+require('dotenv').config();
+require('./config/db'); // Ensure database is connected on startup
 
 const app = express();
 app.use(express.json());
-
-// Initialize database connection using Singleton pattern
-require('./config/db');
+// app.get("/", (req, res) => {
+//     res.send("This is the home page");
+// });
 
 // Use authentication routes
 app.use('/auth', authRoutes);
 
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 5500;
 app.listen(port, () => {
     console.log(`Server Started at http://127.0.0.1:${port}/`);
 });

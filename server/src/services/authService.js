@@ -3,9 +3,25 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { sendResetEmail } = require('../utils/emailSender');
 
-const register = async ({ email, password }) => {
+const register = async ({ first_name, last_name, email, phone_number, password }) => {
+    // Check if all fields are present
+    if (!first_name || !last_name || !email || !phone_number || !password) {
+        throw new Error('All fields are required');
+    }
+
+    // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({ email, password: hashedPassword });
+
+    // Create a new user with all fields
+    const user = new User({
+        first_name,
+        last_name,
+        email,
+        phone_number,
+        password: hashedPassword,
+    });
+
+    // Save the user to the database
     await user.save();
     return { message: 'User registered successfully' };
 };
