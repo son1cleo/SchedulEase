@@ -26,7 +26,8 @@ router.post('/login', async (req, res) => {
 // Request Password Reset Route
 router.post('/reset-password-request', async (req, res) => {
     try {
-        const result = await requestPasswordReset(req.body.email);
+        const { email } = req.body; // Destructure email from the request body
+        const result = await requestPasswordReset(email); // Pass only the email
         res.json(result);
     } catch (error) {
         res.status(400).json({ message: error.message });

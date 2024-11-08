@@ -9,6 +9,8 @@ const userSchema = new mongoose.Schema({
     password: { type: String, required: true },
     created_at: { type: Date, default: Date.now },
     subscription_status: { type: Boolean, default: false },
+    resetToken: String,
+    resetTokenExpiry: Date,
 });
 
 // Hash password before saving the user
