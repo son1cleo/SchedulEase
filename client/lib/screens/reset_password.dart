@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:client/theme.dart';
 import 'package:client/widgets/primary_button.dart';
 import 'package:client/widgets/reset_form.dart';
+import 'package:client/responsive.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
   @override
@@ -20,48 +21,51 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Define a maximum width for the container
-    final maxWidth = 400.0;
-
     return Scaffold(
       body: Center(
-        // Center the content on the screen
         child: Padding(
           padding: kDefaultPadding,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: maxWidth), // Set max-width
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 250),
-                Text('Reset Password', style: titleText),
-                const SizedBox(height: 5),
-                Text(
-                  'Please enter your email address',
-                  style: subTitle.copyWith(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 10),
-                ResetForm(onEmailValid: _updateEmailValidity),
-                const SizedBox(height: 40),
-                PrimaryButton(
-                  buttonText: 'Reset Password',
-                  onPressed: _isEmailValid
-                      ? _resetPassword
-                      : null, // Enable if email is valid
-                ),
-              ],
-            ),
+          child: Responsive(
+            // Layout for mobile
+            mobile: buildContent(context, maxWidth: 300),
+            // Layout for tablet
+            tablet: buildContent(context, maxWidth: 500),
+            // Layout for desktop
+            desktop: buildContent(context, maxWidth: 700),
           ),
         ),
       ),
     );
   }
 
+  Widget buildContent(BuildContext context, {required double maxWidth}) {
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxWidth),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 250),
+          Text('Reset Password', style: titleText),
+          const SizedBox(height: 5),
+          Text(
+            'Please enter your email address',
+            style: subTitle.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 10),
+          ResetForm(onEmailValid: _updateEmailValidity),
+          const SizedBox(height: 40),
+          PrimaryButton(
+            buttonText: 'Reset Password',
+            onPressed: _isEmailValid ? _resetPassword : null,
+          ),
+        ],
+      ),
+    );
+  }
+
   void _resetPassword() {
-    // Implement your reset password logic here
     print("Reset Password button pressed!");
 
-    // Navigate to CheckEmailScreen
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => CheckEmailScreen()),
