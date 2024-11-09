@@ -2,8 +2,12 @@ const express = require('express');
 const authRoutes = require('./controllers/authController');
 require('dotenv').config();
 require('./config/db'); // Ensure database is connected on startup
-
+const cors = require('cors');
 const app = express();
+
+// Enable CORS for all routes
+app.use(cors());
+
 app.use(express.json());
 // app.get("/", (req, res) => {
 //     res.send("This is the home page");

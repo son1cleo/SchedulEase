@@ -1,37 +1,42 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:client/theme.dart';
 
 class LogInForm extends StatefulWidget {
-  final ValueChanged<bool> onFormValid; // Callback to notify if form is valid
+  final TextEditingController emailController;
+  final TextEditingController passwordController;
+  final ValueChanged<bool> onFormValid;
 
-  LogInForm({required this.onFormValid});
+  LogInForm({
+    required this.emailController,
+    required this.passwordController,
+    required this.onFormValid,
+  });
 
   @override
   _LogInFormState createState() => _LogInFormState();
 }
 
 class _LogInFormState extends State<LogInForm> {
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
   bool _isObscure = true;
 
   @override
   void initState() {
     super.initState();
-    _emailController.addListener(_validateForm);
-    _passwordController.addListener(_validateForm);
+    widget.emailController.addListener(_validateForm);
+    widget.passwordController.addListener(_validateForm);
   }
 
   void _validateForm() {
-    final isValid =
-        _emailController.text.isNotEmpty && _passwordController.text.isNotEmpty;
+    final isValid = widget.emailController.text.isNotEmpty &&
+        widget.passwordController.text.isNotEmpty;
     widget.onFormValid(isValid);
   }
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
+    widget.emailController.removeListener(_validateForm);
+    widget.passwordController.removeListener(_validateForm);
     super.dispose();
   }
 
@@ -39,8 +44,8 @@ class _LogInFormState extends State<LogInForm> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        buildInputForm('Email', false, _emailController),
-        buildInputForm('Password', true, _passwordController),
+        buildInputForm('Email', false, widget.emailController),
+        buildInputForm('Password', true, widget.passwordController),
       ],
     );
   }
@@ -65,9 +70,10 @@ class _LogInFormState extends State<LogInForm> {
                       _isObscure = !_isObscure;
                     });
                   },
-                  icon: _isObscure
-                      ? Icon(Icons.visibility_off, color: kTextFieldColor)
-                      : Icon(Icons.visibility, color: kPrimaryColor),
+                  icon: Icon(
+                    _isObscure ? Icons.visibility_off : Icons.visibility,
+                    color: kTextFieldColor,
+                  ),
                 )
               : null,
         ),

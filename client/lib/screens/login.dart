@@ -1,10 +1,13 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:client/screens/reset_password.dart';
 import 'package:client/screens/signup.dart';
 import 'package:client/theme.dart';
 import 'package:client/widgets/login_form.dart';
 import 'package:client/widgets/primary_button.dart';
 import 'package:client/responsive.dart';
+import 'package:client/screens/dashboard.dart';
 
 class LogInScreen extends StatefulWidget {
   @override
@@ -13,11 +16,52 @@ class LogInScreen extends StatefulWidget {
 
 class _LogInScreenState extends State<LogInScreen> {
   bool _isFormValid = false;
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
 
+  // Callback function to handle form validity
   void _updateFormValidity(bool isValid) {
     setState(() {
       _isFormValid = isValid;
     });
+  }
+
+  // Callback function to handle login
+  Future<void> _logInUser() async {
+    final email = _emailController.text;
+    final password = _passwordController.text;
+
+    // Print the email and password values before making the API request
+    print("Email: $email");
+    print("Password: $password");
+
+    try {
+      final response = await http.post(
+        Uri.parse('http://127.0.0.1:5000/auth/login/'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email, 'password': password}),
+      );
+
+      if (response.statusCode == 200) {
+        print("Login successful: ${response.body}");
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => DashboardScreen()),
+        );
+      } else {
+        final message = jsonDecode(response.body)['error'] ?? 'Login failed';
+        _showSnackBar(message);
+      }
+    } catch (e) {
+      print("Error occurred: $e");
+      _showSnackBar('An error occurred. Please try again.');
+    }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   @override
@@ -27,11 +71,8 @@ class _LogInScreenState extends State<LogInScreen> {
         child: Padding(
           padding: kDefaultPadding,
           child: Responsive(
-            // Layout for mobile
             mobile: buildContent(context, maxWidth: 300),
-            // Layout for tablet
             tablet: buildContent(context, maxWidth: 500),
-            // Layout for desktop
             desktop: buildContent(context, maxWidth: 700),
           ),
         ),
@@ -71,7 +112,11 @@ class _LogInScreenState extends State<LogInScreen> {
               ],
             ),
             SizedBox(height: 10),
-            LogInForm(onFormValid: _updateFormValidity),
+            LogInForm(
+              emailController: _emailController,
+              passwordController: _passwordController,
+              onFormValid: _updateFormValidity,
+            ),
             SizedBox(height: 20),
             GestureDetector(
               onTap: () {
@@ -94,17 +139,12 @@ class _LogInScreenState extends State<LogInScreen> {
             SizedBox(height: 20),
             PrimaryButton(
               buttonText: 'Log In',
-              onPressed: _isFormValid ? _logInUser : null,
+              onPressed: _isFormValid ? _logInUser : null, // Trigger login
             ),
             SizedBox(height: 20),
           ],
         ),
       ),
     );
-  }
-
-  void _logInUser() {
-    // Implement your login logic here
-    print("Log In button pressed!");
   }
 }
