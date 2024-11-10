@@ -43,7 +43,9 @@ class _LogInScreenState extends State<LogInScreen> {
       );
 
       if (response.statusCode == 200) {
-        print("Login successful: ${response.body}");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Login successful!')),
+        );
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => DashboardScreen()),

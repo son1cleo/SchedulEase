@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:client/screens/check_mail.dart';
 import 'package:flutter/material.dart';
 import 'package:client/theme.dart';
@@ -12,10 +14,12 @@ class ResetPasswordScreen extends StatefulWidget {
 
 class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   bool _isEmailValid = false;
+  String _email = '';
 
-  void _updateEmailValidity(bool isValid) {
+  void _updateEmailValidity(bool isValid, String email) {
     setState(() {
       _isEmailValid = isValid;
+      _email = email;
     });
   }
 
@@ -26,11 +30,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         child: Padding(
           padding: kDefaultPadding,
           child: Responsive(
-            // Layout for mobile
             mobile: buildContent(context, maxWidth: 300),
-            // Layout for tablet
             tablet: buildContent(context, maxWidth: 500),
-            // Layout for desktop
             desktop: buildContent(context, maxWidth: 700),
           ),
         ),
@@ -63,12 +64,33 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     );
   }
 
-  void _resetPassword() {
-    print("Reset Password button pressed!");
+  Future<void> _resetPassword() async {
+    final url = Uri.parse('http://127.0.0.1:5000/auth/reset-password-request/');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': _email}),
+      );
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => CheckEmailScreen()),
-    );
+      if (response.statusCode == 200) {
+        // Navigate to check email screen on success
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => CheckEmailScreen()),
+        );
+      } else {
+        // Display error message for email already exists or other errors
+        final responseData = jsonDecode(response.body);
+        final errorMessage = responseData['error'] ?? 'An error occurred';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage)),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to send reset request. Try again.')),
+      );
+    }
   }
 }

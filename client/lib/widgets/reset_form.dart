@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:client/theme.dart';
 
 class ResetForm extends StatefulWidget {
-  final ValueChanged<bool> onEmailValid; // Callback to notify if email is valid
+  final Function(bool, String)
+      onEmailValid; // Updated callback to include email
 
   ResetForm({required this.onEmailValid});
 
@@ -20,8 +21,10 @@ class _ResetFormState extends State<ResetForm> {
   }
 
   void _validateEmail() {
-    final isValid = _emailController.text.isNotEmpty;
-    widget.onEmailValid(isValid);
+    final email = _emailController.text;
+    final isValid =
+        email.isNotEmpty && RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email);
+    widget.onEmailValid(isValid, email); // Pass both validity and email
   }
 
   @override

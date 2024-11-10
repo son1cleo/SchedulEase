@@ -1,7 +1,9 @@
-import 'package:client/screens/login.dart';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:client/theme.dart';
 import 'package:client/responsive.dart';
+import 'package:http/http.dart' as http;
+import 'package:client/screens/login.dart';
 
 class SetNewPasswordScreen extends StatefulWidget {
   @override
@@ -14,6 +16,7 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
   bool _isObscureConfirm = true;
   String? newPassword;
   String? confirmPassword;
+  String? token;
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +50,14 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
               style: titleText,
             ),
             SizedBox(height: 20),
+            _buildPasswordField('Token', true, (value) {
+              token = value;
+              if (value == null || value.isEmpty) {
+                return 'Please enter a token';
+              }
+              return null;
+            }),
+            SizedBox(height: 10),
             _buildPasswordField('New Password', true, (value) {
               newPassword = value;
               if (value == null || value.isEmpty) {
@@ -67,17 +78,7 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
             }),
             SizedBox(height: 30),
             ElevatedButton(
-              onPressed: () {
-                if (_formKey.currentState!.validate()) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Password updated successfully!')),
-                  );
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => LogInScreen()),
-                  );
-                }
-              },
+              onPressed: _submitForm,
               style: ElevatedButton.styleFrom(
                 backgroundColor: kPrimaryColor,
                 shape: RoundedRectangleBorder(
@@ -98,31 +99,69 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
   Widget _buildPasswordField(
       String label, bool isNewPassword, FormFieldValidator<String> validator) {
     return TextFormField(
-      obscureText: isNewPassword ? _isObscure : _isObscureConfirm,
+      obscureText: label == 'Token'
+          ? false
+          : (isNewPassword
+              ? _isObscure
+              : _isObscureConfirm), // Always false for Token field
       decoration: InputDecoration(
         labelText: label,
         focusedBorder: UnderlineInputBorder(
           borderSide: BorderSide(color: kPrimaryColor),
         ),
-        suffixIcon: IconButton(
-          onPressed: () {
-            setState(() {
-              if (isNewPassword) {
-                _isObscure = !_isObscure;
-              } else {
-                _isObscureConfirm = !_isObscureConfirm;
-              }
-            });
-          },
-          icon: Icon(
-            isNewPassword
-                ? (_isObscure ? Icons.visibility_off : Icons.visibility)
-                : (_isObscureConfirm ? Icons.visibility_off : Icons.visibility),
-            color: kPrimaryColor,
-          ),
-        ),
+        // Only show the suffix icon for password fields (New Password, Confirm Password)
+        suffixIcon: (label == 'New Password' || label == 'Confirm Password')
+            ? IconButton(
+                onPressed: () {
+                  setState(() {
+                    if (isNewPassword) {
+                      _isObscure = !_isObscure;
+                    } else {
+                      _isObscureConfirm = !_isObscureConfirm;
+                    }
+                  });
+                },
+                icon: Icon(
+                  isNewPassword
+                      ? (_isObscure ? Icons.visibility_off : Icons.visibility)
+                      : (_isObscureConfirm
+                          ? Icons.visibility_off
+                          : Icons.visibility),
+                  color: kPrimaryColor,
+                ),
+              )
+            : null, // No icon for token field
       ),
       validator: validator,
     );
+  }
+
+  // Submit form and call API
+  void _submitForm() async {
+    if (_formKey.currentState!.validate()) {
+      final response = await http.post(
+        Uri.parse('http://127.0.0.1:5000/auth/reset-password/'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'token': token,
+          'newPassword': newPassword,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Password updated successfully!')),
+        );
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => LogInScreen()),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Failed to update password. Please try again.')),
+        );
+      }
+    }
   }
 }

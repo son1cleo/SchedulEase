@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
 import 'package:client/screens/login.dart';
 import 'package:client/theme.dart';
 import 'package:client/widgets/checkbox.dart';
@@ -16,9 +19,25 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _isFormValid = false;
   bool _isTermsAccepted = false;
 
-  void _updateFormValidity(bool isValid) {
+  String? _firstName;
+  String? _lastName;
+  String? _email;
+  String? _phone;
+  String? _password;
+
+  void _updateFormValidity(bool isValid,
+      {String? firstName,
+      String? lastName,
+      String? email,
+      String? phone,
+      String? password}) {
     setState(() {
       _isFormValid = isValid;
+      _firstName = firstName;
+      _lastName = lastName;
+      _email = email;
+      _phone = phone;
+      _password = password;
     });
   }
 
@@ -26,6 +45,53 @@ class _SignUpScreenState extends State<SignUpScreen> {
     setState(() {
       _isTermsAccepted = isSelected;
     });
+  }
+
+  Future<void> _signUp() async {
+    if (_formKey.currentState?.validate() ?? false) {
+      try {
+        final response = await http.post(
+          Uri.parse('http://127.0.0.1:5000/auth/register/'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            "first_name": _firstName,
+            "last_name": _lastName,
+            "email": _email,
+            "phone_number": _phone,
+            "password": _password,
+          }),
+        );
+
+        if (response.statusCode == 200) {
+          // Use Navigator.pushReplacementNamed or Navigator.pop to navigate correctly
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => LogInScreen()),
+          );
+        } else {
+          final responseData = jsonDecode(response.body);
+          final errorMessage = responseData['message'] ?? 'Sign Up failed';
+
+          // Check if the error is specifically for an existing email
+          if (errorMessage.contains('email')) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                  content: Text(
+                      'Email already exists. Please use a different email.')),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(errorMessage)),
+            );
+          }
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Error: Unable to sign up. Please try again.')),
+        );
+      }
+    }
   }
 
   @override
@@ -36,11 +102,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
           child: Padding(
             padding: kDefaultPadding,
             child: Responsive(
-              // Layout for mobile
               mobile: buildContent(context, maxWidth: 300),
-              // Layout for tablet
               tablet: buildContent(context, maxWidth: 500),
-              // Layout for desktop
               desktop: buildContent(context, maxWidth: 700),
             ),
           ),
@@ -64,7 +127,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               SizedBox(width: 5),
               GestureDetector(
                 onTap: () {
-                  Navigator.push(
+                  Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(builder: (context) => LogInScreen()),
                   );
@@ -82,7 +145,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
           SizedBox(height: 10),
           SignUpForm(
             formKey: _formKey,
-            onFormValid: _updateFormValidity,
+            onFormValid: (isValid, data) {
+              _updateFormValidity(isValid,
+                  firstName: data['firstName'],
+                  lastName: data['lastName'],
+                  email: data['email'],
+                  phone: data['phone'],
+                  password: data['password']);
+            },
           ),
           SizedBox(height: 20),
           CheckBox(
@@ -98,25 +168,5 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ],
       ),
     );
-  }
-
-  void _signUp() {
-    if (_formKey.currentState?.validate() ?? false) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Sign Up successful!')),
-      );
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => LogInScreen()),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Didn\'t Sign Up successfully!')),
-      );
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => LogInScreen()),
-      );
-    }
   }
 }

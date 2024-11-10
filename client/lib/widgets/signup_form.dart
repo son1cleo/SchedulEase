@@ -3,7 +3,7 @@ import 'package:client/theme.dart';
 
 class SignUpForm extends StatefulWidget {
   final GlobalKey<FormState> formKey;
-  final ValueChanged<bool> onFormValid;
+  final void Function(bool isValid, Map<String, String> formData) onFormValid;
 
   SignUpForm({required this.formKey, required this.onFormValid});
 
@@ -14,6 +14,7 @@ class SignUpForm extends StatefulWidget {
 class _SignUpFormState extends State<SignUpForm> {
   bool _isObscure = true;
   String _password = '';
+  String? _firstName, _lastName, _email, _phone;
   final TextEditingController _phoneController = TextEditingController();
 
   @override
@@ -27,12 +28,14 @@ class _SignUpFormState extends State<SignUpForm> {
             if (value == null || value.isEmpty) {
               return 'First Name is required';
             }
+            _firstName = value;
             return null;
           }),
           buildInputForm('Last Name', false, (value) {
             if (value == null || value.isEmpty) {
               return 'Last Name is required';
             }
+            _lastName = value;
             return null;
           }),
           buildInputForm('Email', false, (value) {
@@ -42,6 +45,7 @@ class _SignUpFormState extends State<SignUpForm> {
             if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
               return 'Enter a valid email';
             }
+            _email = value;
             return null;
           }),
           buildInputForm('Phone', false, (value) {
@@ -51,6 +55,7 @@ class _SignUpFormState extends State<SignUpForm> {
             if (!RegExp(r'^\+?[0-9]{7,15}$').hasMatch(value)) {
               return 'Enter a valid phone number';
             }
+            _phone = value;
             return null;
           }, controller: _phoneController),
           buildInputForm('Password', true, (value) {
@@ -60,7 +65,7 @@ class _SignUpFormState extends State<SignUpForm> {
             if (value.length < 6) {
               return 'Password must be at least 6 characters';
             }
-            _password = value; // Store password for confirmation check
+            _password = value;
             return null;
           }),
           buildInputForm('Confirm Password', true, (value) {
@@ -115,6 +120,12 @@ class _SignUpFormState extends State<SignUpForm> {
 
   void _validateForm() {
     final isFormValid = widget.formKey.currentState?.validate() ?? false;
-    widget.onFormValid(isFormValid);
+    widget.onFormValid(isFormValid, {
+      'firstName': _firstName ?? '',
+      'lastName': _lastName ?? '',
+      'email': _email ?? '',
+      'phone': _phone ?? '',
+      'password': _password
+    });
   }
 }

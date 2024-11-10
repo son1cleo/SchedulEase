@@ -55,7 +55,7 @@ class CheckEmailScreen extends StatelessWidget {
               ),
             ),
             child: Text(
-              'Back to Login',
+              'Proceed',
               style: TextStyle(color: Colors.white),
             ),
           ),
