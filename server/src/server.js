@@ -10,11 +10,8 @@ const app = express();
 app.use(cors());
 
 app.use(express.json());
-// app.get("/", (req, res) => {
-//     res.send("This is the home page");
-// });
 
-// Use authentication routes
+
 app.use('/auth', authRoutes);
 app.use('/subscribe', subscribeRoutes);
 

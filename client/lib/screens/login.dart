@@ -8,6 +8,8 @@ import 'package:client/widgets/login_form.dart';
 import 'package:client/widgets/primary_button.dart';
 import 'package:client/responsive.dart';
 import 'package:client/screens/dashboard.dart';
+import 'package:provider/provider.dart';
+import 'package:client/providers/user_provider.dart';
 
 class LogInScreen extends StatefulWidget {
   @override
@@ -31,10 +33,6 @@ class _LogInScreenState extends State<LogInScreen> {
     final email = _emailController.text;
     final password = _passwordController.text;
 
-    // Print the email and password values before making the API request
-    print("Email: $email");
-    print("Password: $password");
-
     try {
       final response = await http.post(
         Uri.parse('http://127.0.0.1:5000/auth/login/'),
@@ -43,13 +41,25 @@ class _LogInScreenState extends State<LogInScreen> {
       );
 
       if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Login successful!')),
-        );
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => DashboardScreen()),
-        );
+        final data = jsonDecode(response.body);
+
+        // Check if 'token' and 'user' fields are present in the response
+        if (data != null && data['token'] != null && data['user'] != null) {
+          final token = data['token'];
+          final userData = data['user'];
+
+          // Store token and user data in UserProvider
+          await Provider.of<UserProvider>(context, listen: false)
+              .login(token, userData);
+
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => DashboardScreen()),
+          );
+        } else {
+          // Handle missing fields in response
+          _showSnackBar('Invalid response from server. Please try again.');
+        }
       } else {
         final message = jsonDecode(response.body)['error'] ?? 'Login failed';
         _showSnackBar(message);

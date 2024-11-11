@@ -41,8 +41,8 @@ const login = async ({ email, password }) => {
     }
 
     // Generate a JWT token if the password is valid
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-    return { token };
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET);
+    return { token, user: user._doc };
 };
 
 

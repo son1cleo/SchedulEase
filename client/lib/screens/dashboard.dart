@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:client/responsive.dart'; // Make sure to import the Responsive class
+import 'package:client/responsive.dart';
+import 'package:client/screens/login.dart'; // Import LogInScreen
+import 'package:provider/provider.dart';
+import 'package:client/providers/user_provider.dart';
 
 class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Dashboard'),
@@ -54,8 +59,15 @@ class DashboardScreen extends StatelessWidget {
                   ),
                   ListTile(
                     title: Text('Signout'),
-                    onTap: () {
-                      // Add signout functionality
+                    onTap: () async {
+                      // Log out the user
+                      await userProvider.logout();
+
+                      // Navigate back to the login screen after logout
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (context) => LogInScreen()),
+                      );
                     },
                   ),
                 ],
