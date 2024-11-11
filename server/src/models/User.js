@@ -46,4 +46,9 @@ userSchema.methods.isSubscribe = function () {
     return this.subscription_status;
 };
 
+userSchema.methods.updateSubscriptionStatus = async function (status) {
+    this.subscription_status = status;
+    await this.save();
+};
+
 module.exports = mongoose.model('User', userSchema);

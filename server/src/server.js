@@ -1,5 +1,6 @@
 const express = require('express');
 const authRoutes = require('./controllers/authController');
+const subscribeRoutes = require('./controllers/subscribeController');
 require('dotenv').config();
 require('./config/db'); // Ensure database is connected on startup
 const cors = require('cors');
@@ -15,6 +16,7 @@ app.use(express.json());
 
 // Use authentication routes
 app.use('/auth', authRoutes);
+app.use('/subscribe', subscribeRoutes);
 
 const port = process.env.PORT || 5500;
 app.listen(port, () => {
