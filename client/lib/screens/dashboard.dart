@@ -1,8 +1,10 @@
+// lib/screens/dashboard_screen.dart
 import 'package:flutter/material.dart';
 import 'package:client/responsive.dart';
-import 'package:client/screens/login.dart'; // Import LogInScreen
+import 'package:client/screens/login.dart';
 import 'package:provider/provider.dart';
 import 'package:client/providers/user_provider.dart';
+
 
 class DashboardScreen extends StatelessWidget {
   @override
@@ -37,24 +39,27 @@ class DashboardScreen extends StatelessWidget {
                     title: Text('Smart Scheduling'),
                     onTap: () {
                       // Add navigation for Smart Scheduling
+                      // Example: Navigator.push(context, MaterialPageRoute(builder: (context) => SmartSchedulingScreen()));
                     },
                   ),
                   ListTile(
                     title: Text('KeepNote'),
                     onTap: () {
-                      // Add navigation for KeepNote
+
                     },
                   ),
                   ListTile(
                     title: Text('Subscription'),
                     onTap: () {
                       // Add navigation for Subscription
+                      // Example: Navigator.push(context, MaterialPageRoute(builder: (context) => SubscriptionScreen()));
                     },
                   ),
                   ListTile(
                     title: Text('Settings'),
                     onTap: () {
                       // Add navigation for Settings
+                      // Example: Navigator.push(context, MaterialPageRoute(builder: (context) => SettingsScreen()));
                     },
                   ),
                   ListTile(
