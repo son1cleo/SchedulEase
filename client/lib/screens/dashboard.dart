@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:client/responsive.dart';
-import 'package:client/screens/login.dart'; // Import LogInScreen
+import 'package:client/screens/login.dart';
 import 'package:provider/provider.dart';
 import 'package:client/providers/user_provider.dart';
+import 'package:client/screens/smart_scheduling.dart';
+import 'package:client/screens/keep_note.dart';
+import 'package:client/screens/subscription.dart';
+import 'package:client/screens/settings.dart';
 
 class DashboardScreen extends StatelessWidget {
   @override
@@ -36,25 +40,41 @@ class DashboardScreen extends StatelessWidget {
                   ListTile(
                     title: Text('Smart Scheduling'),
                     onTap: () {
-                      // Add navigation for Smart Scheduling
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => SmartSchedulingScreen()),
+                      );
                     },
                   ),
                   ListTile(
                     title: Text('KeepNote'),
                     onTap: () {
-                      // Add navigation for KeepNote
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => KeepNoteScreen()),
+                      );
                     },
                   ),
                   ListTile(
                     title: Text('Subscription'),
                     onTap: () {
-                      // Add navigation for Subscription
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => SubscriptionScreen()),
+                      );
                     },
                   ),
                   ListTile(
                     title: Text('Settings'),
                     onTap: () {
-                      // Add navigation for Settings
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => SettingsScreen()),
+                      );
                     },
                   ),
                   ListTile(

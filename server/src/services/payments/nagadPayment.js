@@ -1,8 +1,9 @@
 class NagadPayment {
     async process(amount) {
-        // Implement Nagad payment logic here
-        console.log(`Processing Nagad payment of ${amount} BDT`);
-        // e.g., Nagad API integration
+        return {
+            success: true,
+            transactionId: 'NAGAD123456' // Replace with actual transactionId from the payment gateway
+        };
     }
 }
 
