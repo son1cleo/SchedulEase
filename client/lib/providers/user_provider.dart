@@ -13,33 +13,48 @@ class UserProvider with ChangeNotifier {
 
   // Load user data from local storage
   Future<void> loadUser() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    _token = prefs.getString('token');
-    final userData = prefs.getString('user');
-    if (userData != null) {
-      _user = jsonDecode(userData);
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      _token = prefs.getString('token');
+      final userData = prefs.getString('user');
+      if (userData != null) {
+        _user = jsonDecode(userData);
+      }
+      notifyListeners();
+    } catch (error) {
+      print('Error loading user data: $error');
+      throw Exception('Failed to load user data');
     }
-    notifyListeners();
   }
 
   // Login and save user data
   Future<void> login(String token, Map<String, dynamic> userData) async {
-    _token = token;
-    _user = userData;
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setString('token', token);
-    await prefs.setString('user', jsonEncode(userData));
-    notifyListeners();
+    try {
+      _token = token;
+      _user = userData;
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setString('token', token);
+      await prefs.setString('user', jsonEncode(userData));
+      notifyListeners();
+    } catch (error) {
+      print('Error during login: $error');
+      throw Exception('Failed to log in');
+    }
   }
 
   // Logout and clear user data
   Future<void> logout() async {
-    _token = null;
-    _user = null;
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.remove('token');
-    await prefs.remove('user');
-    notifyListeners();
+    try {
+      _token = null;
+      _user = null;
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.remove('token');
+      await prefs.remove('user');
+      notifyListeners();
+    } catch (error) {
+      print('Error during logout: $error');
+      throw Exception('Failed to log out');
+    }
   }
 
   // Refresh the subscription status from the backend
@@ -71,6 +86,9 @@ class UserProvider with ChangeNotifier {
           final responseData = jsonDecode(response.body);
           print('User data updated successfully: ${responseData['user']}');
           _user = responseData['user']; // Update the user data
+          // Save updated user data to local storage
+          SharedPreferences prefs = await SharedPreferences.getInstance();
+          await prefs.setString('user', jsonEncode(_user));
           notifyListeners(); // Notify listeners to refresh UI
         } else {
           print(

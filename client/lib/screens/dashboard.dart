@@ -9,10 +9,29 @@ import 'package:client/screens/keep_note.dart';
 import 'package:client/screens/subscription.dart';
 import 'package:client/screens/settings.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
+  @override
+  _DashboardScreenState createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+
+    // Load the user data from shared preferences
+    userProvider.loadUser();
+
+    // Refresh subscription status (if needed)
+    if (userProvider.isLoggedIn) {
+      userProvider.refreshUserSubscription();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final userProvider = Provider.of<UserProvider>(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -96,10 +115,25 @@ class DashboardScreen extends StatelessWidget {
             )
           : null, // No drawer on desktop view
       body: Center(
-        child: Text(
-          'Welcome to the Dashboard!',
-          style: TextStyle(fontSize: 24),
-        ),
+        child: userProvider.isLoggedIn
+            ? Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Welcome, ${userProvider.user!['first_name']}!',
+                    style: TextStyle(fontSize: 24),
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    'Subscription Status: ${userProvider.user!['subscription_status'] ? 'Active' : 'Inactive'}',
+                    style: TextStyle(fontSize: 18),
+                  ),
+                ],
+              )
+            : Text(
+                'Please log in to view the dashboard.',
+                style: TextStyle(fontSize: 18),
+              ),
       ),
     );
   }
