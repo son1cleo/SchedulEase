@@ -6,7 +6,7 @@ const ChecklistItem = new mongoose.Schema({
   content: { type: String, required: true },
   is_checked: { type: Boolean, default: false },
   created_at: { type: Date, default: Date.now },
-  updated_at: { type: Date, default: Date.now },
+  updated_at: { type: Date },
 });
 
 module.exports = mongoose.model('ChecklistItem', ChecklistItem);

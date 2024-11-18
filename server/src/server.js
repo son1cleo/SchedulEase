@@ -14,22 +14,19 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-
 app.use('/auth', authRoutes);
 app.use('/subscribe', subscribeRoutes);
 
 app.post('/notes', noteController.createNote);
 app.get('/notes/:userId', noteController.getNotes);
-// app.get('/hello', (req, res) => {
-//   res.send('Hello World!');
-// });
+
 app.put('/notes/:id', noteController.updateNote);
 app.delete('/notes/:id', noteController.deleteNote);
 
-app.post('/checklist', checklistController.createChecklistItem); 
-app.get('/checklist/:noteId', checklistController.getChecklistItems); 
-app.put('/checklist/:id', checklistController.updateChecklistItem); 
-app.delete('/checklist/:id', checklistController.deleteChecklistItem); 
+app.post('/checklist', checklistController.createChecklistItem);
+app.get('/checklist/:noteId', checklistController.getChecklistItems);
+app.put('/checklist/:id', checklistController.updateChecklistItem);
+app.delete('/checklist/:id', checklistController.deleteChecklistItem);
 
 const port = process.env.PORT || 5500;
 app.listen(port, () => {

@@ -1,4 +1,4 @@
-const NoteSchema = require('../models/note');
+const Note = require('../models/note');
 const Reminder = require('../models/reminder');
 
 
@@ -36,7 +36,7 @@ exports.createNote = async (req, res) => {
 exports.getNotes = async (req, res) => {
   try {
     console.log(req.params.userId); //node er console e dekhar jonno
-    const notes = await NoteSchema.find({ user_id: req.params.userId }).sort({ is_pinned: -1, updated_at: -1 });
+    const notes = await Note.find({ user_id: req.params.userId }).sort({ is_pinned: -1, updated_at: -1 });
     res.json(notes); // Return sorted notes
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -47,7 +47,7 @@ exports.getNotes = async (req, res) => {
 exports.updateNote = async (req, res) => {
   try {
     const updateData = { ...req.body, updated_at: new Date() }; // Update `updated_at` field
-    const note = await NoteSchema.findByIdAndUpdate(req.params.id, updateData, { new: true });
+    const note = await Note.findByIdAndUpdate(req.params.id, updateData, { new: true });
     if (!note) {
       return res.status(404).json({ error: 'Note not found' });
     }
@@ -60,7 +60,7 @@ exports.updateNote = async (req, res) => {
 // Delete a note by ID
 exports.deleteNote = async (req, res) => {
   try {
-    const note = await NoteSchema.findByIdAndDelete(req.params.id);
+    const note = await Note.findByIdAndDelete(req.params.id);
     if (!note) {
       return res.status(404).json({ error: 'Note not found' });
     }
