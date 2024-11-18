@@ -1,4 +1,5 @@
 // lib/models/pin_decorator.dart
+import 'note.dart';
 import 'note_decorator.dart';
 
 class PinDecorator extends NoteDecorator {

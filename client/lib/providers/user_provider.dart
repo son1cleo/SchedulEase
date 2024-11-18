@@ -9,6 +9,8 @@ class UserProvider with ChangeNotifier {
 
   String? get token => _token;
   Map<String, dynamic>? get user => _user;
+  String? get userId => _user?['_id'];
+
   bool get isLoggedIn => _token != null;
 
   // Load user data from local storage
