@@ -106,4 +106,54 @@ class UserProvider with ChangeNotifier {
       print('User is null, cannot refresh subscription status');
     }
   }
+
+  Future<void> loadUserData() async {
+    final prefs = await SharedPreferences.getInstance();
+    _token = prefs.getString('token');
+    final userData = prefs.getString('user');
+    if (userData != null) {
+      _user = json.decode(userData);
+    }
+    notifyListeners();
+  }
+
+  Future<void> saveUserData(String token, Map<String, dynamic> userData) async {
+    final prefs = await SharedPreferences.getInstance();
+    _token = token;
+    _user = userData;
+    await prefs.setString('token', token);
+    await prefs.setString('user', json.encode(userData));
+    notifyListeners();
+  }
+
+  Future<void> clearUserData() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('token');
+    await prefs.remove('user');
+    _token = null;
+    _user = null;
+    notifyListeners();
+  }
+
+  Future<void> updateUserData(Map<String, String> updatedFields) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token =
+        prefs.getString('token'); // Ensure token is stored and retrieved
+    if (token == null) {
+      throw Exception('No authentication token found');
+    }
+
+    final response = await http.put(
+      Uri.parse('http://127.0.0.1:5000/auth/update'), // Correct URL
+      headers: {
+        'Content-Type': 'application/json',
+        'x-auth-token': token, // Pass the token here
+      },
+      body: jsonEncode(updatedFields),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Error: ${response.body}');
+    }
+  }
 }
