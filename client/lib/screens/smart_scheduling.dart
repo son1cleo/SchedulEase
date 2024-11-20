@@ -187,6 +187,18 @@ class _SmartSchedulingScreenState extends State<SmartSchedulingScreen> {
     List<String> checklist = [];
     String? scheduleDate;
     List<String> scheduleTimes = [];
+    List<String> availableTimes = List.generate(24, (index) => '${index}:00');
+
+    List<String> _getAvailableTimes(String date) {
+      // Filter out times already scheduled for the selected date
+      final scheduledTimes = tasks
+          .where((task) => task['schedule_date'] == date)
+          .expand((task) => task['schedule_time'])
+          .toList();
+      return availableTimes
+          .where((time) => !scheduledTimes.contains(time))
+          .toList();
+    }
 
     showDialog(
       context: context,
@@ -286,9 +298,11 @@ class _SmartSchedulingScreenState extends State<SmartSchedulingScreen> {
                           );
                           if (pickedDate != null) {
                             setState(() {
-                              scheduleDate = pickedDate
-                                  .toIso8601String()
-                                  .split('T')[0]; // Format date to YYYY-MM-DD
+                              scheduleDate =
+                                  pickedDate.toIso8601String().split('T')[0];
+                              // Update available times for the selected date
+                              availableTimes =
+                                  _getAvailableTimes(scheduleDate!);
                             });
                           }
                         },
@@ -298,25 +312,21 @@ class _SmartSchedulingScreenState extends State<SmartSchedulingScreen> {
                       // Time Selection Chips
                       if (scheduleDate != null)
                         Wrap(
-                          children: List.generate(
-                            24,
-                            (index) {
-                              final time = '${index}:00';
-                              return FilterChip(
-                                label: Text(time),
-                                selected: scheduleTimes.contains(time),
-                                onSelected: (selected) {
-                                  setState(() {
-                                    if (selected) {
-                                      scheduleTimes.add(time);
-                                    } else {
-                                      scheduleTimes.remove(time);
-                                    }
-                                  });
-                                },
-                              );
-                            },
-                          ),
+                          children: availableTimes.map((time) {
+                            return FilterChip(
+                              label: Text(time),
+                              selected: scheduleTimes.contains(time),
+                              onSelected: (selected) {
+                                setState(() {
+                                  if (selected) {
+                                    scheduleTimes.add(time);
+                                  } else {
+                                    scheduleTimes.remove(time);
+                                  }
+                                });
+                              },
+                            );
+                          }).toList(),
                         ),
                       if (scheduleTimes.isEmpty)
                         Text('Please select at least one time.',
@@ -337,6 +347,7 @@ class _SmartSchedulingScreenState extends State<SmartSchedulingScreen> {
                       // Add Task to List
                       setState(() {
                         tasks.add({
+                          'id': taskIdCounter++,
                           'title': title,
                           'type': type,
                           'details':
