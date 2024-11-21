@@ -1,12 +1,9 @@
-// lib/models/pin_decorator.dart
-import 'note.dart';
 import 'note_decorator.dart';
+import 'note.dart';
 
 class PinDecorator extends NoteDecorator {
   PinDecorator(Note note) : super(note);
 
   @override
-  String getContent() {
-    return '${super.getContent()}\nStatus: Pinned';
-  }
+  bool isPinned() => true;
 }

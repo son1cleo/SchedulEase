@@ -1,12 +1,9 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../components/NoteGrid.dart';
 import '../components/NoteDialog.dart';
 import '../services/note_service.dart';
-import 'package:client/providers/user_provider.dart';
-import 'package:provider/provider.dart';
-import 'package:http/http.dart' as http;
+import '../providers/user_provider.dart';
 
 class KeepNoteScreen extends StatefulWidget {
   @override
@@ -16,6 +13,8 @@ class KeepNoteScreen extends StatefulWidget {
 class _KeepNoteScreenState extends State<KeepNoteScreen> {
   final NoteService noteService = NoteService();
   List<dynamic> notes = [];
+  List<dynamic> filteredNotes = [];
+  TextEditingController searchController = TextEditingController();
 
   @override
   void initState() {
@@ -23,61 +22,65 @@ class _KeepNoteScreenState extends State<KeepNoteScreen> {
     fetchNotes();
   }
 
-  // Fetch notes from the backend
   Future<void> fetchNotes() async {
     try {
-      final userId =
-          Provider.of<UserProvider>(context, listen: false).user?['_id'];
-      if (userId == null) {
-        print('User ID is null. Cannot fetch notes.');
-        return;
-      }
+      final userId = Provider.of<UserProvider>(context, listen: false).user?['_id'];
+      if (userId == null) return;
 
       final fetchedNotes = await noteService.fetchNotes(userId);
+      final fetchedReminders = await noteService.fetchReminders(userId);
+      print('Fetched notes: $fetchedNotes');
       setState(() {
-        notes = fetchedNotes;
+        notes = fetchedNotes.map((note) {
+          final reminder = fetchedReminders.firstWhere(
+            (r) => r['note_id'] == note['_id'],
+            orElse: () => null,
+          );
+          return {...note, 'reminder_time': reminder?['reminder_time']};
+        }).toList();
       });
     } catch (e) {
       print('Error fetching notes: $e');
     }
   }
 
-  // Add a new note
-  Future<void> addNote(String title, String description, bool isPinned,
-      DateTime? reminderTime) async {
-    try {
-      final userId =
-          Provider.of<UserProvider>(context, listen: false).user?['_id'];
+  void filterNotes(String query) {
+    if (query.isEmpty) {
+      setState(() {
+        filteredNotes = notes;
+      });
+    } else {
+      setState(() {
+        filteredNotes = notes.where((note) {
+          final title = note['title'].toLowerCase();
+          final description = note['description'].toLowerCase();
+          return title.contains(query.toLowerCase()) || description.contains(query.toLowerCase());
+        }).toList();
+      });
+    }
+  }
 
-      if (userId == null) {
-        print('User ID is null. Cannot add note.');
-        return;
-      }
+  Future<void> addNote(String title, String description, bool isPinned, DateTime? reminderTime) async {
+    try {
+      final userId = Provider.of<UserProvider>(context, listen: false).user?['_id'];
+      if (userId == null) return;
 
       final noteData = {
         'user_id': userId,
         'title': title,
         'description': description,
         'is_pinned': isPinned,
-        'reminder_time':
-            reminderTime?.toIso8601String(), // Convert DateTime to ISO string
+        'reminder_time': reminderTime?.toIso8601String(),
       };
 
-      await http.post(
-        Uri.parse('http://localhost:5000/notes'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode(noteData),
-      );
-
-      await fetchNotes(); // Refresh notes after adding
+      await noteService.createNote(noteData);
+      await fetchNotes();
     } catch (e) {
       print('Error adding note: $e');
     }
   }
 
-  // Edit an existing note
-  Future<void> editNote(String noteId, String title, String description,
-      bool isPinned, DateTime? reminderTime) async {
+  Future<void> editNote(String noteId, String title, String description, bool isPinned, DateTime? reminderTime) async {
     try {
       final noteData = {
         'title': title,
@@ -87,13 +90,12 @@ class _KeepNoteScreenState extends State<KeepNoteScreen> {
       };
 
       await noteService.updateNote(noteId, noteData);
-      await fetchNotes(); // Refresh the notes
+      await fetchNotes();
     } catch (e) {
       print('Error editing note: $e');
     }
   }
 
-  // Delete a note
   Future<void> deleteNote(String noteId) async {
     try {
       await noteService.deleteNote(noteId);
@@ -103,16 +105,53 @@ class _KeepNoteScreenState extends State<KeepNoteScreen> {
     }
   }
 
+    Future<void> addReminder(String noteId, DateTime reminderTime) async {
+    try {
+      final userId = Provider.of<UserProvider>(context, listen: false).user?['_id'];
+      if (userId == null) return;
+
+      final reminderData = {
+        'user_id': userId,
+        'note_id': noteId,
+        'reminder_time': reminderTime.toIso8601String(),
+      };
+
+      await noteService.createReminder(reminderData);
+      fetchNotes();
+    } catch (e) {
+      print('Error adding reminder: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('KeepNote')),
+      appBar: AppBar(
+        title: TextField(
+          controller: searchController,
+          decoration: InputDecoration(
+            hintText: 'Search notes...',
+            border: InputBorder.none,
+            prefixIcon: Icon(Icons.search),
+          ),
+          onChanged: (query) => filterNotes(query),
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.clear),
+            onPressed: () {
+              searchController.clear();
+              filterNotes('');
+            },
+          ),
+        ],
+      ),
       body: NoteGrid(
-        notes: notes,
-        onEdit: (note) {
+        notes: filteredNotes,
+        onView: (note) {
           showDialog(
             context: context,
-            builder: (BuildContext context) => NoteDialog(
+            builder: (context) => NoteDialog(
               noteId: note['_id'],
               title: note['title'],
               description: note['description'],
@@ -121,26 +160,36 @@ class _KeepNoteScreenState extends State<KeepNoteScreen> {
                   ? DateTime.parse(note['reminder_time'])
                   : null,
               onSave: (title, description, isPinned, reminderTime) {
-                editNote(
-                    note['_id'], title, description, isPinned, reminderTime);
+                editNote(note['_id'], title, description, isPinned, reminderTime);
               },
+              onDelete: () => deleteNote(note['_id']),
             ),
           );
         },
-        onDelete: deleteNote,
+        onPinToggle: (note) async {
+  // Update pin status
+  final updatedNote = {
+    ...note,
+    'is_pinned': !note['is_pinned'],
+  };
+
+  // Explicitly cast to Map<String, dynamic> before sending
+  await noteService.updateNote(note['_id'], updatedNote.cast<String, dynamic>());
+  fetchNotes(); // Refresh the notes
+},
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           showDialog(
             context: context,
-            builder: (BuildContext context) => NoteDialog(
+            builder: (context) => NoteDialog(
               onSave: (title, description, isPinned, reminderTime) {
                 addNote(title, description, isPinned, reminderTime);
               },
             ),
           );
         },
-        child: Icon(Icons.add),
+        child: const Icon(Icons.add),
       ),
     );
   }

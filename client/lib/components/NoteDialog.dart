@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 
-class NoteDialog extends StatelessWidget {
+class NoteDialog extends StatefulWidget {
   final String? noteId;
   final String? title;
   final String? description;
-  final bool isPinned;
+  final bool? isPinned;
   final DateTime? reminderTime;
-  final Function(String, String, bool, DateTime?) onSave;
+  final Function(String title, String description, bool isPinned, DateTime? reminderTime) onSave;
+  final VoidCallback? onDelete;
 
   const NoteDialog({
     Key? key,
@@ -16,77 +17,110 @@ class NoteDialog extends StatelessWidget {
     this.isPinned = false,
     this.reminderTime,
     required this.onSave,
+    this.onDelete,
   }) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    String dialogTitle = title ?? '';
-    String dialogDescription = description ?? '';
-    bool dialogPinned = isPinned;
-    DateTime? dialogReminderTime = reminderTime;
+  _NoteDialogState createState() => _NoteDialogState();
+}
 
+class _NoteDialogState extends State<NoteDialog> {
+  late String title;
+  late String description;
+  late bool isPinned;
+  DateTime? reminderTime;
+
+  @override
+  void initState() {
+    super.initState();
+    title = widget.title ?? '';
+    description = widget.description ?? '';
+    isPinned = widget.isPinned ?? false;
+    reminderTime = widget.reminderTime;
+  }
+
+  void pickReminderTime() async {
+    final DateTime? date = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2100),
+    );
+
+    if (date != null) {
+      final TimeOfDay? time = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.now(),
+      );
+
+      if (time != null) {
+        setState(() {
+          reminderTime = DateTime(
+            date.year,
+            date.month,
+            date.day,
+            time.hour,
+            time.minute,
+          );
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(noteId == null ? 'Add Note' : 'Edit Note'),
+      title: Text(widget.noteId == null ? 'Add Note' : 'Edit Note'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           TextField(
             decoration: InputDecoration(labelText: 'Title'),
-            controller: TextEditingController(text: dialogTitle),
-            onChanged: (value) => dialogTitle = value,
+            onChanged: (value) => title = value,
+            controller: TextEditingController(text: widget.title),
           ),
           TextField(
             decoration: InputDecoration(labelText: 'Description'),
-            controller: TextEditingController(text: dialogDescription),
-            onChanged: (value) => dialogDescription = value,
+            onChanged: (value) => description = value,
+            controller: TextEditingController(text: widget.description),
           ),
           Row(
             children: [
               Checkbox(
-                value: dialogPinned,
-                onChanged: (value) => dialogPinned = value!,
+                value: isPinned,
+                onChanged: (value) {
+                  setState(() {
+                    isPinned = value ?? false;
+                  });
+                },
               ),
-              Text('Pin this note'),
+              Text('Pin Note'),
             ],
           ),
-          TextButton.icon(
-            icon: Icon(Icons.alarm),
-            label: Text(
-                dialogReminderTime == null ? 'Set Reminder' : dialogReminderTime.toString()),
-            onPressed: () async {
-              final selectedDate = await showDatePicker(
-                context: context,
-                initialDate: dialogReminderTime ?? DateTime.now(),
-                firstDate: DateTime.now(),
-                lastDate: DateTime(2100),
-              );
-              if (selectedDate != null) {
-                final selectedTime = await showTimePicker(
-                  context: context,
-                  initialTime: TimeOfDay.now(),
-                );
-                if (selectedTime != null) {
-                  dialogReminderTime = DateTime(
-                    selectedDate.year,
-                    selectedDate.month,
-                    selectedDate.day,
-                    selectedTime.hour,
-                    selectedTime.minute,
-                  );
-                }
-              }
-            },
+          Row(
+            children: [
+              IconButton(
+                icon: Icon(Icons.alarm),
+                onPressed: pickReminderTime,
+              ),
+              if (reminderTime != null)
+                Text('${reminderTime!.year}-${reminderTime!.month}-${reminderTime!.day} ${reminderTime!.hour}:${reminderTime!.minute}'),
+            ],
           ),
         ],
       ),
       actions: [
+        if (widget.onDelete != null)
+          TextButton(
+            onPressed: widget.onDelete,
+            child: const Text('Delete'),
+          ),
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text('Cancel'),
-        ),
-        TextButton(
-          onPressed: () => onSave(dialogTitle, dialogDescription, dialogPinned, dialogReminderTime),
-          child: Text(noteId == null ? 'Add' : 'Update'),
+          onPressed: () {
+            widget.onSave(title, description, isPinned, reminderTime);
+            Navigator.of(context).pop();
+          },
+          child: const Text('Save'),
         ),
       ],
     );

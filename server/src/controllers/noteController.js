@@ -1,5 +1,7 @@
 const Note = require('../models/note');
 const Reminder = require('../models/reminder');
+const mongoose = require('mongoose');
+const ObjectId = mongoose.Types.ObjectId;
 
 
 // Create a new note
@@ -34,28 +36,58 @@ exports.createNote = async (req, res) => {
 
 // Get all notes for a specific user
 exports.getNotes = async (req, res) => {
+  console.log('Received GET /notes/:userId request');
+  console.log('Params:', req.params);
+
   try {
-    console.log(req.params.userId); //node er console e dekhar jonno
-    const notes = await Note.find({ user_id: req.params.userId }).sort({ is_pinned: -1, updated_at: -1 });
-    res.json(notes); // Return sorted notes
-  } catch (error) {
-    res.status(400).json({ error: error.message });
+    const userId = req.params.userId; // Extract userId from params
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+
+    // Convert userId to ObjectId
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+
+    // Find notes using the userObjectId
+    const notes = await Note.find({ user_id: userObjectId });
+    console.log('Notes fetched:', notes);
+
+    res.status(200).json(notes);
+  } catch (err) {
+    console.error('Error fetching notes:', err.message);
+    res.status(500).json({ error: err.message });
   }
 };
+
 
 // Update a note by ID
 exports.updateNote = async (req, res) => {
   try {
-    const updateData = { ...req.body, updated_at: new Date() }; // Update `updated_at` field
-    const note = await Note.findByIdAndUpdate(req.params.id, updateData, { new: true });
-    if (!note) {
-      return res.status(404).json({ error: 'Note not found' });
+    const { id } = req.params;
+    const { title, description, is_pinned, reminder_time } = req.body;
+
+    const updatedNote = await Note.findByIdAndUpdate(
+      id,
+      {
+        title,
+        description,
+        is_pinned,
+        reminder_time,
+        updated_at: new Date(),
+      },
+      { new: true } // Return the updated document
+    );
+
+    if (!updatedNote) {
+      return res.status(404).json({ message: 'Note not found' });
     }
-    res.json(note); // Return the updated note
+
+    res.status(200).json(updatedNote);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ message: error.message });
   }
 };
+
 
 // Delete a note by ID
 exports.deleteNote = async (req, res) => {

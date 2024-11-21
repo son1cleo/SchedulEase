@@ -1,13 +1,19 @@
-// lib/models/note_decorator.dart
 import 'note.dart';
 
-abstract class NoteDecorator extends Note {
+abstract class NoteDecorator implements Note {
   final Note note;
 
   NoteDecorator(this.note);
 
   @override
-  String getContent() {
-    return note.getContent();
-  }
+  String getTitle() => note.getTitle();
+
+  @override
+  String getDescription() => note.getDescription();
+
+  @override
+  DateTime? getReminderTime() => note.getReminderTime();
+
+  @override
+  bool isPinned() => note.isPinned();
 }

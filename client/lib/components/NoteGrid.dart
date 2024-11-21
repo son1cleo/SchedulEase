@@ -1,38 +1,36 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import '../components/NoteCard.dart';
+import 'NoteCard.dart';
 
 class NoteGrid extends StatelessWidget {
   final List<dynamic> notes;
-  final Function onEdit;
-  final Function onDelete;
+  final Function(dynamic note) onView;
+  final Function(dynamic note) onPinToggle; // Add onPinToggle callback
 
   const NoteGrid({
     Key? key,
     required this.notes,
-    required this.onEdit,
-    required this.onDelete,
+    required this.onView,
+    required this.onPinToggle, // Include onPinToggle as required
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return GridView.builder(
+      padding: EdgeInsets.all(10),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4,
-        crossAxisSpacing: 8.0,
-        mainAxisSpacing: 8.0,
-        childAspectRatio: 1.2,
+        crossAxisCount: 2,
+        childAspectRatio: 2,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
       ),
       itemCount: notes.length,
       itemBuilder: (context, index) {
         final note = notes[index];
-        final createdAtFormatted =
-            DateFormat.yMMMd().format(DateTime.parse(note['created_at']));
         return NoteCard(
           note: note,
-          createdAtFormatted: createdAtFormatted,
-          onEdit: () => onEdit(note),
-          onDelete: () => onDelete(note['_id']),
+          createdAtFormatted: note['created_at'], // Pass formatted date
+          onView: () => onView(note),
+          onPinToggle: () => onPinToggle(note), // Pass onPinToggle callback
         );
       },
     );
