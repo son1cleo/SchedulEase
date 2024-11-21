@@ -1,3 +1,4 @@
+const bcrypt = require('bcryptjs');
 const User = require("../models/User");
 
 class UserBuilder {
@@ -20,8 +21,16 @@ class UserBuilder {
         return this;
     }
 
-    setPassword(password) {
-        if (password) this.user.password = password; // Password will be hashed by Mongoose
+    async setPassword(currentPassword, newPassword) {
+        if (newPassword) {
+            // Verify the current password
+            const isMatch = await bcrypt.compare(currentPassword, this.user.password);
+            if (!isMatch) {
+                throw new Error("Current password is incorrect");
+            }
+
+            this.user.password = newPassword;
+        }
         return this;
     }
 
@@ -32,19 +41,23 @@ class UserBuilder {
 
 const updateUser = async (userId, updatedFields) => {
     const user = await User.findById(userId);
-    if (!user) throw new Error('User not found');
+    if (!user) throw new Error("User not found");
 
     const builder = new UserBuilder(user);
     builder
         .setFirstName(updatedFields.first_name)
         .setLastName(updatedFields.last_name)
-        .setPhoneNumber(updatedFields.phone_number)
-        .setPassword(updatedFields.password);
+        .setPhoneNumber(updatedFields.phone_number);
+
+    // If password update is requested, validate and hash it
+    if (updatedFields.current_password && updatedFields.password) {
+        await builder.setPassword(updatedFields.current_password, updatedFields.password);
+    }
 
     const updatedUser = builder.build();
     await updatedUser.save();
 
-    return { message: 'User updated successfully', user: updatedUser };
+    return { message: "User updated successfully", user: updatedUser };
 };
 
 module.exports = { updateUser };

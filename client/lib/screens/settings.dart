@@ -12,10 +12,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String? _firstName;
   String? _lastName;
   String? _phoneNumber;
+  String? _currentPassword;
   String? _newPassword;
   String? _confirmPassword;
   bool _isUpdatingPassword = false;
   bool _isSaving = false;
+  bool _showCurrentPassword = false;
+  bool _isNewPasswordVisible = false;
+  bool _isConfirmPasswordVisible = false;
 
   @override
   void initState() {
@@ -45,9 +49,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         updatedFields['last_name'] = _lastName!;
       if (_phoneNumber != null && _phoneNumber!.isNotEmpty)
         updatedFields['phone_number'] = _phoneNumber!;
+
       if (_isUpdatingPassword &&
+          _currentPassword != null &&
           _newPassword != null &&
           _confirmPassword == _newPassword) {
+        updatedFields['current_password'] = _currentPassword!;
         updatedFields['password'] = _newPassword!;
       }
 
@@ -134,10 +141,56 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     // Password Fields
                     if (_isUpdatingPassword) ...[
+                      // Current Password
                       TextFormField(
-                        decoration: InputDecoration(labelText: 'New Password'),
-                        obscureText: true,
-                        onSaved: (value) => _newPassword = value,
+                        decoration: InputDecoration(
+                          labelText: 'Current Password',
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _showCurrentPassword
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _showCurrentPassword = !_showCurrentPassword;
+                              });
+                            },
+                          ),
+                        ),
+                        obscureText: !_showCurrentPassword,
+                        onSaved: (value) => _currentPassword = value,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter your current password';
+                          }
+                          return null;
+                        },
+                      ),
+                      // New Password
+                      TextFormField(
+                        decoration: InputDecoration(
+                          labelText: 'New Password',
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _isNewPasswordVisible
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _isNewPasswordVisible = !_isNewPasswordVisible;
+                              });
+                            },
+                          ),
+                        ),
+                        obscureText: !_isNewPasswordVisible,
+                        onChanged: (value) {
+                          setState(() {
+                            _newPassword =
+                                value.trim(); // Update state immediately
+                          });
+                        },
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Please enter a new password';
@@ -146,11 +199,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         },
                       ),
                       TextFormField(
-                        decoration:
-                            InputDecoration(labelText: 'Confirm Password'),
-                        obscureText: true,
-                        onSaved: (value) => _confirmPassword = value,
+                        decoration: InputDecoration(
+                          labelText: 'Confirm Password',
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _isConfirmPasswordVisible
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _isConfirmPasswordVisible =
+                                    !_isConfirmPasswordVisible;
+                              });
+                            },
+                          ),
+                        ),
+                        obscureText: !_isConfirmPasswordVisible,
+                        onChanged: (value) {
+                          setState(() {
+                            _confirmPassword =
+                                value.trim(); // Update state immediately
+                          });
+                        },
                         validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please confirm your password';
+                          }
                           if (value != _newPassword) {
                             return 'Passwords do not match';
                           }

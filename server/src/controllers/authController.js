@@ -47,14 +47,14 @@ router.post('/reset-password', async (req, res) => {
     }
 });
 
-router.put('/update', auth, async (req, res) => {
+router.put("/update", auth, async (req, res) => {
     try {
         const userId = req.user.userId; // Extract userId from req.user
         const updatedFields = req.body; // Fields to update
         const result = await updateUser(userId, updatedFields);
         res.json(result); // Respond with success
     } catch (error) {
-        if (!res.headersSent) { // Check if response is already sent
+        if (!res.headersSent) {
             res.status(400).json({ message: error.message });
         }
     }
