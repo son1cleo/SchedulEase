@@ -7,30 +7,31 @@ class SmartSchedulingScreen extends StatefulWidget {
 }
 
 class _SmartSchedulingScreenState extends State<SmartSchedulingScreen> {
+  int taskIdCounter = 1;
+  int checklistItemIdCounter = 1;
+
   List<Map<String, dynamic>> tasks = [
     {
-      'title': 'Complete Homework',
-      'type': 'Description',
-      'details': 'Math homework for chapter 5',
-      'schedule_date': '2024-11-17',
-      'schedule_time': ['10:00', '14:00'],
-      'status': 'To-do',
-    },
-    {
+      'id': 1,
       'title': 'Grocery Shopping',
       'type': 'Checklist',
-      'details': ['Buy Milk', 'Buy Bread', 'Buy Eggs'],
+      'details': [
+        {'id': 1, 'item': 'Buy Milk', 'completed': false},
+        {'id': 2, 'item': 'Buy Bread', 'completed': false},
+        {'id': 3, 'item': 'Buy Eggs', 'completed': true},
+      ],
       'schedule_date': '2024-11-20',
       'schedule_time': ['16:00'],
       'status': 'To-do',
     },
     {
-      'title': 'Team Meeting',
+      'id': 2,
+      'title': 'Complete Homework',
       'type': 'Description',
-      'details': 'Discuss project milestones',
-      'schedule_date': '2024-11-21',
-      'schedule_time': ['09:00'],
-      'status': 'To-do',
+      'details': 'Math homework for chapter 5',
+      'schedule_date': '2024-11-17',
+      'schedule_time': ['10:00', '14:00'],
+      'status': 'Overdue',
     },
   ];
 
@@ -56,54 +57,126 @@ class _SmartSchedulingScreenState extends State<SmartSchedulingScreen> {
   }
 
   void _showTaskDetails(Map<String, dynamic> task) {
+    bool changesMade = false;
+
     showDialog(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(task['title']),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Description/Checklist:'),
-              Text(task['type'] == 'Description'
-                  ? task['details']
-                  : task['details'].join('\n')),
-              SizedBox(height: 10),
-              Text('Scheduled Date: ${task['schedule_date']}'),
-              Text('Scheduled Times: ${task['schedule_time'].join(', ')}'),
-              Text('Status: ${task['status']}'),
-            ],
-          ),
-          actions: [
-            if (task['status'] != 'Completed')
-              TextButton(
-                onPressed: () {
-                  setState(() {
-                    task['status'] = 'Completed';
-                  });
-                  Navigator.pop(context);
-                },
-                child: Text('Complete'),
-              ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  tasks.remove(task);
-                });
-                Navigator.pop(context);
-              },
-              child: Text('Delete'),
-            ),
-          ],
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            // Automatically mark task as Completed if all checklist items are checked
+            if (task['type'] == 'Checklist' &&
+                (task['details'] as List<Map<String, dynamic>>)
+                    .every((item) => item['completed'] == true) &&
+                task['status'] != 'Completed') {
+              setDialogState(() {
+                task['status'] = 'Completed';
+                changesMade = true; // Trigger the "Update" button
+              });
+            }
+
+            return AlertDialog(
+              title: Text(task['title']),
+              content: task['type'] == 'Checklist'
+                  ? Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ...((task['details'] as List<Map<String, dynamic>>)
+                            .map<Widget>((item) {
+                          return CheckboxListTile(
+                            title: Text(item['item'].toString()),
+                            value: item['completed'] as bool,
+                            onChanged: task['status'] == 'Completed'
+                                ? null
+                                : (value) {
+                                    setDialogState(() {
+                                      item['completed'] = value!;
+                                      changesMade = true;
+
+                                      // Check if all checklist items are completed
+                                      if ((task['details']
+                                              as List<Map<String, dynamic>>)
+                                          .every((item) =>
+                                              item['completed'] == true)) {
+                                        task['status'] = 'Completed';
+                                      }
+                                    });
+                                  },
+                          );
+                        }).toList()),
+                      ],
+                    )
+                  : Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('Description: ${task['details']}'),
+                        Text('Scheduled Date: ${task['schedule_date']}'),
+                        Text(
+                            'Scheduled Times: ${task['schedule_time'].join(', ')}'),
+                        Text('Status: ${task['status']}'),
+                      ],
+                    ),
+              actions: [
+                if (task['type'] == 'Checklist' &&
+                    changesMade &&
+                    task['status'] != 'Completed')
+                  TextButton(
+                    onPressed: () {
+                      setDialogState(() {
+                        changesMade = false;
+                        // Mark task as completed if all items are checked
+                        if ((task['details'] as List<Map<String, dynamic>>)
+                            .every((item) => item['completed'] == true)) {
+                          task['status'] = 'Completed';
+                        }
+                      });
+
+                      Navigator.pop(dialogContext);
+                      setState(() {}); // Update parent state
+                    },
+                    child: Text('Update'),
+                  ),
+                if (task['status'] != 'Completed')
+                  TextButton(
+                    onPressed: () {
+                      setDialogState(() {
+                        task['status'] = 'Completed';
+                      });
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Task marked as Completed!')),
+                      );
+
+                      Navigator.pop(dialogContext);
+                      setState(() {}); // Update parent state
+                    },
+                    child: Text('Complete'),
+                  ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(dialogContext);
+                  },
+                  child: Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      tasks.remove(task);
+                    });
+
+                    Navigator.pop(dialogContext);
+                  },
+                  child: Text('Delete'),
+                ),
+              ],
+            );
+          },
         );
       },
-    );
+    ).then((_) {
+      // Refresh parent widget state after dialog is dismissed
+      setState(() {});
+    });
   }
 
   void _createTask() {
