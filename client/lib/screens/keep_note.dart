@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../components/NoteGrid.dart';
+import 'package:client/widgets/note_grid.dart';
+// import '../components/NoteGrid.dart';
 import '../components/NoteDialog.dart';
 import '../services/note_service.dart';
 import '../providers/user_provider.dart';
@@ -24,12 +25,16 @@ class _KeepNoteScreenState extends State<KeepNoteScreen> {
 
   Future<void> fetchNotes() async {
     try {
-      final userId = Provider.of<UserProvider>(context, listen: false).user?['_id'];
+      final userId =
+          Provider.of<UserProvider>(context, listen: false).user?['_id'];
       if (userId == null) return;
 
       final fetchedNotes = await noteService.fetchNotes(userId);
       final fetchedReminders = await noteService.fetchReminders(userId);
+
       print('Fetched notes: $fetchedNotes');
+      print('Mapped notes: $notes');
+
       setState(() {
         notes = fetchedNotes.map((note) {
           final reminder = fetchedReminders.firstWhere(
@@ -38,7 +43,10 @@ class _KeepNoteScreenState extends State<KeepNoteScreen> {
           );
           return {...note, 'reminder_time': reminder?['reminder_time']};
         }).toList();
+        filteredNotes = notes; // Ensure the filtered list is updated
       });
+
+      print('Notes after mapping: $notes');
     } catch (e) {
       print('Error fetching notes: $e');
     }
@@ -52,17 +60,20 @@ class _KeepNoteScreenState extends State<KeepNoteScreen> {
     } else {
       setState(() {
         filteredNotes = notes.where((note) {
-          final title = note['title'].toLowerCase();
-          final description = note['description'].toLowerCase();
-          return title.contains(query.toLowerCase()) || description.contains(query.toLowerCase());
+          final title = note.getTitle().toLowerCase();
+          final description = note.getDescription().toLowerCase();
+          return title.contains(query.toLowerCase()) ||
+              description.contains(query.toLowerCase());
         }).toList();
       });
     }
   }
 
-  Future<void> addNote(String title, String description, bool isPinned, DateTime? reminderTime) async {
+  Future<void> addNote(String title, String description, bool isPinned,
+      DateTime? reminderTime) async {
     try {
-      final userId = Provider.of<UserProvider>(context, listen: false).user?['_id'];
+      final userId =
+          Provider.of<UserProvider>(context, listen: false).user?['_id'];
       if (userId == null) return;
 
       final noteData = {
@@ -80,7 +91,8 @@ class _KeepNoteScreenState extends State<KeepNoteScreen> {
     }
   }
 
-  Future<void> editNote(String noteId, String title, String description, bool isPinned, DateTime? reminderTime) async {
+  Future<void> editNote(String noteId, String title, String description,
+      bool isPinned, DateTime? reminderTime) async {
     try {
       final noteData = {
         'title': title,
@@ -105,9 +117,10 @@ class _KeepNoteScreenState extends State<KeepNoteScreen> {
     }
   }
 
-    Future<void> addReminder(String noteId, DateTime reminderTime) async {
+  Future<void> addReminder(String noteId, DateTime reminderTime) async {
     try {
-      final userId = Provider.of<UserProvider>(context, listen: false).user?['_id'];
+      final userId =
+          Provider.of<UserProvider>(context, listen: false).user?['_id'];
       if (userId == null) return;
 
       final reminderData = {
@@ -141,43 +154,39 @@ class _KeepNoteScreenState extends State<KeepNoteScreen> {
             icon: Icon(Icons.clear),
             onPressed: () {
               searchController.clear();
-              filterNotes('');
+              filterNotes(''); // Reset the filtered list
             },
           ),
         ],
       ),
-      body: NoteGrid(
-        notes: filteredNotes,
-        onView: (note) {
-          showDialog(
-            context: context,
-            builder: (context) => NoteDialog(
-              noteId: note['_id'],
-              title: note['title'],
-              description: note['description'],
-              isPinned: note['is_pinned'],
-              reminderTime: note['reminder_time'] != null
-                  ? DateTime.parse(note['reminder_time'])
-                  : null,
-              onSave: (title, description, isPinned, reminderTime) {
-                editNote(note['_id'], title, description, isPinned, reminderTime);
+      body: filteredNotes.isEmpty
+          ? Center(child: Text('No notes available'))
+          : NoteGrid(
+              notes: filteredNotes,
+              onView: (note) {
+                showDialog(
+                  context: context,
+                  builder: (context) => NoteDialog(
+                    noteId: note['_id'], // Add `_id` to BasicNote if needed
+                    title: note.getTitle(),
+                    description: note.getDescription(),
+                    isPinned: note.isPinned(),
+                    reminderTime: note.getReminderTime(),
+                    onSave: (title, description, isPinned, reminderTime) {
+                      editNote(note['_id'], title, description, isPinned,
+                          reminderTime);
+                    },
+                    onDelete: () => deleteNote(note['_id']),
+                  ),
+                );
               },
-              onDelete: () => deleteNote(note['_id']),
+              onPinToggle: (note) async {
+                final updatedNote = {...note, 'is_pinned': !note['is_pinned']};
+                await noteService.updateNote(
+                    note['_id'], updatedNote.cast<String, dynamic>());
+                fetchNotes(); // Refresh notes
+              },
             ),
-          );
-        },
-        onPinToggle: (note) async {
-  // Update pin status
-  final updatedNote = {
-    ...note,
-    'is_pinned': !note['is_pinned'],
-  };
-
-  // Explicitly cast to Map<String, dynamic> before sending
-  await noteService.updateNote(note['_id'], updatedNote.cast<String, dynamic>());
-  fetchNotes(); // Refresh the notes
-},
-      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           showDialog(

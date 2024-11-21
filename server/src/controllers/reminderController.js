@@ -23,9 +23,16 @@ exports.createReminder = async (req, res) => {
 // Get reminders for a specific user
 exports.getReminders = async (req, res) => {
   try {
-    const { userId } = req.params.userId;
+    const { userId } = req.params;
+
+    // Validate userId
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ error: 'Invalid User ID' });
+    }
+
     const userObjectId = new mongoose.Types.ObjectId(userId);
     const reminders = await Reminder.find({ user_id: userObjectId }).populate('note_id');
+
     res.json(reminders);
   } catch (error) {
     res.status(400).json({ error: error.message });

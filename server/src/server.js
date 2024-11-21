@@ -6,6 +6,7 @@ const cors = require('cors');
 const authRoutes = require('./controllers/authController');
 const subscribeRoutes = require('./controllers/subscribeController');
 const noteController = require('./controllers/noteController');
+const reminderController = require('./controllers/reminderController');
 const checklistController = require('./controllers/checkListController');
 
 const app = express();
@@ -27,6 +28,8 @@ app.post('/checklist', checklistController.createChecklistItem);
 app.get('/checklist/:noteId', checklistController.getChecklistItems);
 app.put('/checklist/:id', checklistController.updateChecklistItem);
 app.delete('/checklist/:id', checklistController.deleteChecklistItem);
+
+app.get('/reminders/:userId', reminderController.getReminders);
 
 const port = process.env.PORT || 5500;
 app.listen(port, () => {
