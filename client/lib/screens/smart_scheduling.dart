@@ -27,7 +27,14 @@ class _SmartSchedulingScreenState extends State<SmartSchedulingScreen> {
 
   void _fetchTasks() async {
     try {
-      final fetchedTasks = await taskService.getTasks();
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final userId = userProvider.userId;
+
+      if (userId == null || userId.isEmpty) {
+        throw Exception("User is not authenticated.");
+      }
+
+      final fetchedTasks = await taskService.getTasks(userId);
       setState(() {
         tasks = fetchedTasks;
       });

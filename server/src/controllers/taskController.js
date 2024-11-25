@@ -14,7 +14,6 @@ exports.createTask = async (req, res) => {
 
     let checklistItemIds = [];
     if (type === 'Checklist') {
-      // Create checklist items and get their ObjectId
       const checklistItems = await ChecklistItem.insertMany(details);
       checklistItemIds = checklistItems.map(item => item._id);
     }
@@ -23,11 +22,12 @@ exports.createTask = async (req, res) => {
       user_id,
       title,
       type,
-      details: checklistItemIds,  // Use checklist item references
+      details: type === 'Checklist' ? checklistItemIds : details, // Use `details` directly for Description type
       schedule_date,
       schedule_time,
       status,
     });
+
 
     await task.save();
     res.status(200).json(task);
