@@ -18,8 +18,8 @@ class NoteGrid extends StatelessWidget {
     return GridView.builder(
       padding: EdgeInsets.all(10),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        childAspectRatio: 2,
+        crossAxisCount: 4,
+        childAspectRatio: 1.2,
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
       ),

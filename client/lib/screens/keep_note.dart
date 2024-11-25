@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:client/widgets/note_grid.dart';
-// import '../components/NoteGrid.dart';
+// import 'package:client/widgets/note_grid.dart';
+import '../components/NoteGrid.dart';
 import '../components/NoteDialog.dart';
 import '../services/note_service.dart';
 import '../providers/user_provider.dart';
