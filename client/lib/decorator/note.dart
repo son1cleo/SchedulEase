@@ -1,4 +1,6 @@
-// lib/models/note.dart
 abstract class Note {
-  String getContent();
+  String getTitle();
+  String getDescription();
+  DateTime? getReminderTime();
+  bool isPinned();
 }

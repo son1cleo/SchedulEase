@@ -1,4 +1,6 @@
 const Reminder = require('../models/reminder'); // Import the Reminder model
+const mongoose = require('mongoose');
+const ObjectId = mongoose.Types.ObjectId;
 
 // Create a new reminder
 exports.createReminder = async (req, res) => {
@@ -23,7 +25,14 @@ exports.getReminders = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    const reminders = await Reminder.find({ user_id: userId }).populate('note_id');
+    // Validate userId
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ error: 'Invalid User ID' });
+    }
+
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+    const reminders = await Reminder.find({ user_id: userObjectId }).populate('note_id');
+
     res.json(reminders);
   } catch (error) {
     res.status(400).json({ error: error.message });

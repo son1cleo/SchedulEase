@@ -4,11 +4,19 @@ import 'note.dart';
 class BasicNote extends Note {
   final String title;
   final String description;
+  final DateTime? createdAt;
 
-  BasicNote({required this.title, required this.description});
+  BasicNote({ required this.title, required this.description, this.createdAt});
 
   @override
-  String getContent() {
-    return 'Title: $title\nDescription: $description';
-  }
+  String getTitle() => title;
+
+  @override
+  String getDescription() => description;
+
+  @override
+  DateTime? getReminderTime() => createdAt;
+
+  @override
+  bool isPinned() => false;
 }
