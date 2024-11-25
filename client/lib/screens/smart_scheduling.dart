@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:client/responsive.dart';
+import 'package:client/services/task_service.dart'; // Import the service file
+import 'package:client/providers/user_provider.dart';
+import 'package:provider/provider.dart';
 
 class SmartSchedulingScreen extends StatefulWidget {
   @override
@@ -7,371 +10,177 @@ class SmartSchedulingScreen extends StatefulWidget {
 }
 
 class _SmartSchedulingScreenState extends State<SmartSchedulingScreen> {
-  int taskIdCounter = 1;
-  int checklistItemIdCounter = 1;
-
-  List<Map<String, dynamic>> tasks = [
-    {
-      'id': 1,
-      'title': 'Grocery Shopping',
-      'type': 'Checklist',
-      'details': [
-        {'id': 1, 'item': 'Buy Milk', 'completed': false},
-        {'id': 2, 'item': 'Buy Bread', 'completed': false},
-        {'id': 3, 'item': 'Buy Eggs', 'completed': true},
-      ],
-      'schedule_date': '2024-11-20',
-      'schedule_time': ['16:00'],
-      'status': 'To-do',
-    },
-    {
-      'id': 2,
-      'title': 'Complete Homework',
-      'type': 'Description',
-      'details': 'Math homework for chapter 5',
-      'schedule_date': '2024-11-17',
-      'schedule_time': ['10:00', '14:00'],
-      'status': 'Overdue',
-    },
-  ];
-
+  late TaskService taskService;
+  List<Map<String, dynamic>> tasks = [];
   String searchQuery = "";
   String filterStatus = "All";
 
   @override
   void initState() {
     super.initState();
-    _checkForOverdueTasks();
-  }
-
-  void _checkForOverdueTasks() {
-    final now = DateTime.now();
-    setState(() {
-      for (var task in tasks) {
-        final scheduleDate = DateTime.parse(task['schedule_date']);
-        if (scheduleDate.isBefore(now) && task['status'] != 'Completed') {
-          task['status'] = 'Overdue';
-        }
-      }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      taskService = TaskService(userProvider: userProvider);
+      _fetchTasks();
     });
   }
 
+  void _fetchTasks() async {
+    try {
+      final fetchedTasks = await taskService.getTasks();
+      setState(() {
+        tasks = fetchedTasks;
+      });
+    } catch (e) {
+      print("Error fetching tasks: $e");
+    }
+  }
+
+  // Show task details in a modal bottom sheet
   void _showTaskDetails(Map<String, dynamic> task) {
-    bool changesMade = false;
-
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            // Automatically mark task as Completed if all checklist items are checked
-            if (task['type'] == 'Checklist' &&
-                (task['details'] as List<Map<String, dynamic>>)
-                    .every((item) => item['completed'] == true) &&
-                task['status'] != 'Completed') {
-              setDialogState(() {
-                task['status'] = 'Completed';
-                changesMade = true; // Trigger the "Update" button
-              });
-            }
-
-            return AlertDialog(
-              title: Text(task['title']),
-              content: task['type'] == 'Checklist'
-                  ? Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ...((task['details'] as List<Map<String, dynamic>>)
-                            .map<Widget>((item) {
-                          return CheckboxListTile(
-                            title: Text(item['item'].toString()),
-                            value: item['completed'] as bool,
-                            onChanged: task['status'] == 'Completed'
-                                ? null
-                                : (value) {
-                                    setDialogState(() {
-                                      item['completed'] = value!;
-                                      changesMade = true;
-
-                                      // Check if all checklist items are completed
-                                      if ((task['details']
-                                              as List<Map<String, dynamic>>)
-                                          .every((item) =>
-                                              item['completed'] == true)) {
-                                        task['status'] = 'Completed';
-                                      }
-                                    });
-                                  },
-                          );
-                        }).toList()),
-                      ],
-                    )
-                  : Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('Description: ${task['details']}'),
-                        Text('Scheduled Date: ${task['schedule_date']}'),
-                        Text(
-                            'Scheduled Times: ${task['schedule_time'].join(', ')}'),
-                        Text('Status: ${task['status']}'),
-                      ],
-                    ),
-              actions: [
-                if (task['type'] == 'Checklist' &&
-                    changesMade &&
-                    task['status'] != 'Completed')
-                  TextButton(
-                    onPressed: () {
-                      setDialogState(() {
-                        changesMade = false;
-                        // Mark task as completed if all items are checked
-                        if ((task['details'] as List<Map<String, dynamic>>)
-                            .every((item) => item['completed'] == true)) {
-                          task['status'] = 'Completed';
-                        }
-                      });
-
-                      Navigator.pop(dialogContext);
-                      setState(() {}); // Update parent state
-                    },
-                    child: Text('Update'),
-                  ),
-                if (task['status'] != 'Completed')
-                  TextButton(
-                    onPressed: () {
-                      setDialogState(() {
-                        task['status'] = 'Completed';
-                      });
-
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Task marked as Completed!')),
-                      );
-
-                      Navigator.pop(dialogContext);
-                      setState(() {}); // Update parent state
-                    },
-                    child: Text('Complete'),
-                  ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(dialogContext);
-                  },
-                  child: Text('Cancel'),
-                ),
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      tasks.remove(task);
-                    });
-
-                    Navigator.pop(dialogContext);
-                  },
-                  child: Text('Delete'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    ).then((_) {
-      // Refresh parent widget state after dialog is dismissed
-      setState(() {});
-    });
-  }
-
-  void _createTask() {
-    final _formKey = GlobalKey<FormState>();
-    String? title;
-    String? type;
-    String? description;
-    List<String> checklist = [];
-    String? scheduleDate;
-    List<String> scheduleTimes = [];
-
-    showDialog(
-      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: Text('Create Task'),
-              content: Form(
-                key: _formKey,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Title Field
-                      TextFormField(
-                        decoration: InputDecoration(labelText: 'Title'),
-                        onChanged: (value) => title = value,
-                        validator: (value) => value == null || value.isEmpty
-                            ? 'Title is required'
-                            : null,
-                      ),
-                      // Type Dropdown
-                      DropdownButtonFormField<String>(
-                        decoration: InputDecoration(labelText: 'Type'),
-                        items: ['Description', 'Checklist']
-                            .map((type) => DropdownMenuItem(
-                                  value: type,
-                                  child: Text(type),
-                                ))
-                            .toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            type = value;
-                            if (type == 'Description') {
-                              checklist.clear();
-                            } else {
-                              description = null;
-                            }
-                          });
-                        },
-                        validator: (value) =>
-                            value == null ? 'Type is required' : null,
-                      ),
-                      // Description or Checklist Fields
-                      if (type == 'Description')
-                        TextFormField(
-                          decoration: InputDecoration(labelText: 'Description'),
-                          maxLines: 3,
-                          onChanged: (value) => description = value,
-                          validator: (value) => type == 'Description' &&
-                                  (value == null || value.isEmpty)
-                              ? 'Description is required'
-                              : null,
-                        ),
-                      if (type == 'Checklist')
-                        Column(
-                          children: [
-                            ...checklist.map((item) => Row(
-                                  children: [
-                                    Expanded(child: Text(item)),
-                                    IconButton(
-                                      icon: Icon(Icons.remove_circle),
-                                      onPressed: () {
-                                        setState(() {
-                                          checklist.remove(item);
-                                        });
-                                      },
-                                    ),
-                                  ],
-                                )),
-                            TextFormField(
-                              decoration: InputDecoration(
-                                  labelText: 'Add Checklist Item'),
-                              onFieldSubmitted: (value) {
-                                setState(() {
-                                  checklist.add(value);
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                      // Schedule Date Picker
-                      TextFormField(
-                        decoration: InputDecoration(
-                            labelText: 'Schedule Date',
-                            hintText: 'Select a date'),
-                        controller: TextEditingController(
-                            text: scheduleDate != null ? scheduleDate : ''),
-                        readOnly: true,
-                        onTap: () async {
-                          DateTime? pickedDate = await showDatePicker(
-                            context: context,
-                            initialDate: DateTime.now(),
-                            firstDate: DateTime.now(),
-                            lastDate: DateTime.now().add(Duration(days: 365)),
-                          );
-                          if (pickedDate != null) {
-                            setState(() {
-                              scheduleDate = pickedDate
-                                  .toIso8601String()
-                                  .split('T')[0]; // Format date to YYYY-MM-DD
-                            });
-                          }
-                        },
-                        validator: (value) =>
-                            scheduleDate == null ? 'Date is required' : null,
-                      ),
-                      // Time Selection Chips
-                      if (scheduleDate != null)
-                        Wrap(
-                          children: List.generate(
-                            24,
-                            (index) {
-                              final time = '${index}:00';
-                              return FilterChip(
-                                label: Text(time),
-                                selected: scheduleTimes.contains(time),
-                                onSelected: (selected) {
-                                  setState(() {
-                                    if (selected) {
-                                      scheduleTimes.add(time);
-                                    } else {
-                                      scheduleTimes.remove(time);
-                                    }
-                                  });
-                                },
-                              );
-                            },
-                          ),
-                        ),
-                      if (scheduleTimes.isEmpty)
-                        Text('Please select at least one time.',
-                            style: TextStyle(color: Colors.red)),
-                    ],
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                task['title'],
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 10),
+              Text(
+                'Type: ${task['type']}',
+                style: TextStyle(fontSize: 16),
+              ),
+              if (task['type'] == 'Description')
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: Text(
+                    'Details: ${task['details']}',
+                    style: TextStyle(fontSize: 16),
                   ),
+                ),
+              if (task['type'] == 'Checklist')
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(height: 8),
+                    Text('Checklist:', style: TextStyle(fontSize: 16)),
+                    ...List.generate(
+                      task['details'].length,
+                      (index) => Row(
+                        children: [
+                          Icon(
+                            Icons.check_box,
+                            color: Colors.green,
+                          ),
+                          SizedBox(width: 8),
+                          Text(task['details'][index]),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              SizedBox(height: 10),
+              Text(
+                'Scheduled Date: ${task['schedule_date']}',
+                style: TextStyle(fontSize: 16),
+              ),
+              Text(
+                'Scheduled Times: ${task['schedule_time'].join(', ')}',
+                style: TextStyle(fontSize: 16),
+              ),
+              Text(
+                'Status: ${task['status']}',
+                style: TextStyle(
+                  fontSize: 16,
+                  color:
+                      task['status'] == 'Overdue' ? Colors.red : Colors.black,
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    if (_formKey.currentState!.validate() &&
-                        scheduleTimes.isNotEmpty) {
-                      // Add Task to List
-                      setState(() {
-                        tasks.add({
-                          'title': title,
-                          'type': type,
-                          'details':
-                              type == 'Description' ? description : checklist,
-                          'schedule_date': scheduleDate,
-                          'schedule_time': scheduleTimes,
-                          'status': 'To-do',
-                        });
-                      });
-                      Navigator.pop(context); // Close Dialog
-                    }
-                  },
-                  child: Text('Create'),
-                ),
-              ],
-            );
-          },
+              SizedBox(height: 20),
+              Row(
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      _updateTaskStatus(task, 'Completed');
+                      Navigator.pop(context);
+                    },
+                    child: Text('Mark as Completed'),
+                  ),
+                  SizedBox(width: 10),
+                  ElevatedButton(
+                    onPressed: () {
+                      _deleteTask(task['_id']);
+                      Navigator.pop(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                    ),
+                    child: Text('Delete Task'),
+                  ),
+                  SizedBox(width: 10),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    child: Text('Cancel'),
+                  ),
+                ],
+              ),
+            ],
+          ),
         );
       },
     );
   }
 
-  List<Map<String, dynamic>> _filteredTasks() {
-    return tasks.where((task) {
+  // Function to update task status
+  void _updateTaskStatus(Map<String, dynamic> task, String status) async {
+    try {
+      final updatedTask = await taskService.updateTask(task['_id'], {
+        'status': status,
+      });
+      setState(() {
+        final index = tasks.indexWhere((t) => t['_id'] == updatedTask['_id']);
+        if (index != -1) {
+          tasks[index] = updatedTask;
+        }
+      });
+    } catch (e) {
+      print("Error updating task: $e");
+    }
+  }
+
+  // Function to delete task
+  void _deleteTask(String id) async {
+    try {
+      await taskService.deleteTask(id);
+      setState(() {
+        tasks.removeWhere((task) => task['_id'] == id);
+      });
+    } catch (e) {
+      print("Error deleting task: $e");
+    }
+  }
+
+  // Build the task grid
+  Widget _buildTaskGrid(BuildContext context, int crossAxisCount) {
+    final filteredTasks = tasks.where((task) {
       final matchesSearch =
           task['title'].toLowerCase().contains(searchQuery.toLowerCase());
       final matchesFilter = filterStatus == "All" ||
           task['status'].toLowerCase() == filterStatus.toLowerCase();
-
       return matchesSearch && matchesFilter;
     }).toList();
-  }
 
-  Widget _buildTaskGrid(BuildContext context, int crossAxisCount) {
-    final filteredTasks = _filteredTasks();
     return filteredTasks.isNotEmpty
         ? GridView.builder(
             padding: EdgeInsets.all(10),
@@ -454,9 +263,11 @@ class _SmartSchedulingScreenState extends State<SmartSchedulingScreen> {
                 });
               },
               decoration: InputDecoration(
-                labelText: 'Search by title',
-                border: OutlineInputBorder(),
+                labelText: 'Search',
                 prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
             ),
           ),
@@ -473,6 +284,185 @@ class _SmartSchedulingScreenState extends State<SmartSchedulingScreen> {
         onPressed: _createTask,
         child: Icon(Icons.add),
       ),
+    );
+  }
+
+  void _createTask() {
+    final _formKey = GlobalKey<FormState>();
+    String? title;
+    String? type;
+    String? description;
+    List<String> checklist = [];
+    String? scheduleDate;
+    List<String> scheduleTimes = [];
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text('Create Task'),
+              content: Form(
+                key: _formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        decoration: InputDecoration(labelText: 'Title'),
+                        onChanged: (value) => title = value,
+                        validator: (value) => value == null || value.isEmpty
+                            ? 'Title is required'
+                            : null,
+                      ),
+                      DropdownButtonFormField<String>(
+                        decoration: InputDecoration(labelText: 'Type'),
+                        items: ['Description', 'Checklist']
+                            .map((type) => DropdownMenuItem(
+                                  value: type,
+                                  child: Text(type),
+                                ))
+                            .toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            type = value;
+                            if (type == 'Description') {
+                              checklist.clear();
+                            } else {
+                              description = null;
+                            }
+                          });
+                        },
+                        validator: (value) =>
+                            value == null ? 'Type is required' : null,
+                      ),
+                      if (type == 'Description')
+                        TextFormField(
+                          decoration: InputDecoration(labelText: 'Description'),
+                          maxLines: 3,
+                          onChanged: (value) => description = value,
+                          validator: (value) => type == 'Description' &&
+                                  (value == null || value.isEmpty)
+                              ? 'Description is required'
+                              : null,
+                        ),
+                      if (type == 'Checklist')
+                        Column(
+                          children: [
+                            ...checklist.map((item) => Row(
+                                  children: [
+                                    Expanded(child: Text(item)),
+                                    IconButton(
+                                      icon: Icon(Icons.remove_circle),
+                                      onPressed: () {
+                                        setState(() {
+                                          checklist.remove(item);
+                                        });
+                                      },
+                                    ),
+                                  ],
+                                )),
+                            TextFormField(
+                              decoration: InputDecoration(
+                                  labelText: 'Add Checklist Item'),
+                              onFieldSubmitted: (value) {
+                                setState(() {
+                                  checklist.add(value);
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                      TextFormField(
+                        decoration: InputDecoration(
+                            labelText: 'Schedule Date',
+                            hintText: 'Select a date'),
+                        controller: TextEditingController(
+                            text: scheduleDate != null ? scheduleDate : ''),
+                        readOnly: true,
+                        onTap: () async {
+                          DateTime? pickedDate = await showDatePicker(
+                            context: context,
+                            initialDate: DateTime.now(),
+                            firstDate: DateTime.now(),
+                            lastDate: DateTime.now().add(Duration(days: 365)),
+                          );
+                          if (pickedDate != null) {
+                            setState(() {
+                              scheduleDate =
+                                  pickedDate.toIso8601String().split('T')[0];
+                            });
+                          }
+                        },
+                        validator: (value) =>
+                            scheduleDate == null ? 'Date is required' : null,
+                      ),
+                      if (scheduleDate != null)
+                        Wrap(
+                          children: List.generate(
+                            24,
+                            (index) {
+                              final time = '${index}:00';
+                              return FilterChip(
+                                label: Text(time),
+                                selected: scheduleTimes.contains(time),
+                                onSelected: (selected) {
+                                  setState(() {
+                                    if (selected) {
+                                      scheduleTimes.add(time);
+                                    } else {
+                                      scheduleTimes.remove(time);
+                                    }
+                                  });
+                                },
+                              );
+                            },
+                          ),
+                        ),
+                      if (scheduleTimes.isEmpty)
+                        Text('Please select at least one time.',
+                            style: TextStyle(color: Colors.red)),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (_formKey.currentState!.validate() &&
+                        scheduleTimes.isNotEmpty) {
+                      try {
+                        final newTask = await taskService.createTask({
+                          'title': title,
+                          'type': type,
+                          'details':
+                              type == 'Description' ? description : checklist,
+                          'schedule_date': scheduleDate,
+                          'schedule_time': scheduleTimes,
+                          'status': 'To-do',
+                        });
+                        setState(() {
+                          tasks.add(newTask);
+                        });
+
+                        Navigator.pop(context);
+                      } catch (e) {
+                        print("Error creating task: $e");
+                      }
+                    }
+                  },
+                  child: Text('Create'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }
