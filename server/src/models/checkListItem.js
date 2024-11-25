@@ -1,12 +1,10 @@
-// src/models/checklistItem.js
 const mongoose = require('mongoose');
 
-const ChecklistItem = new mongoose.Schema({
-  note_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Note', required: true },
-  content: { type: String, required: true },
-  is_checked: { type: Boolean, default: false },
-  created_at: { type: Date, default: Date.now },
-  updated_at: { type: Date },
+// Checklist schema for structured items
+const checklistItemSchema = new mongoose.Schema({
+  item: { type: String, required: true },
+  completed: { type: Boolean, default: false },
 });
 
-module.exports = mongoose.model('ChecklistItem', ChecklistItem);
+// Check if the model is already defined (to prevent overwriting)
+module.exports = mongoose.models.ChecklistItem || mongoose.model('ChecklistItem', checklistItemSchema);
