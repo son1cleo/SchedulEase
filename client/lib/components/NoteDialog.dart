@@ -5,8 +5,9 @@ class NoteDialog extends StatefulWidget {
   final String? title;
   final String? description;
   final bool? isPinned;
-  final DateTime? reminderTime;
-  final Function(String title, String description, bool isPinned, DateTime? reminderTime) onSave;
+  final DateTime? reminderTime; // This will hold the reminder time
+  final Function(String title, String description, bool isPinned,
+      DateTime? reminderTime) onSave;
   final VoidCallback? onDelete;
 
   const NoteDialog({
@@ -15,7 +16,7 @@ class NoteDialog extends StatefulWidget {
     this.title,
     this.description,
     this.isPinned = false,
-    this.reminderTime,
+    this.reminderTime, // Initialize reminderTime
     required this.onSave,
     this.onDelete,
   }) : super(key: key);
@@ -30,19 +31,34 @@ class _NoteDialogState extends State<NoteDialog> {
   late bool isPinned;
   DateTime? reminderTime;
 
+  late TextEditingController titleController;
+  late TextEditingController descriptionController;
+
   @override
   void initState() {
     super.initState();
     title = widget.title ?? '';
     description = widget.description ?? '';
     isPinned = widget.isPinned ?? false;
-    reminderTime = widget.reminderTime;
+    reminderTime = widget.reminderTime; // Set reminderTime from widget
+
+    // Initialize controllers only once
+    titleController = TextEditingController(text: title);
+    descriptionController = TextEditingController(text: description);
+  }
+
+  @override
+  void dispose() {
+    // Dispose the controllers to avoid memory leaks
+    titleController.dispose();
+    descriptionController.dispose();
+    super.dispose();
   }
 
   void pickReminderTime() async {
     final DateTime? date = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: reminderTime ?? DateTime.now(),
       firstDate: DateTime.now(),
       lastDate: DateTime(2100),
     );
@@ -50,7 +66,7 @@ class _NoteDialogState extends State<NoteDialog> {
     if (date != null) {
       final TimeOfDay? time = await showTimePicker(
         context: context,
-        initialTime: TimeOfDay.now(),
+        initialTime: TimeOfDay.fromDateTime(reminderTime ?? DateTime.now()),
       );
 
       if (time != null) {
@@ -75,14 +91,14 @@ class _NoteDialogState extends State<NoteDialog> {
         mainAxisSize: MainAxisSize.min,
         children: [
           TextField(
+            controller: titleController,
             decoration: InputDecoration(labelText: 'Title'),
             onChanged: (value) => title = value,
-            controller: TextEditingController(text: widget.title),
           ),
           TextField(
+            controller: descriptionController,
             decoration: InputDecoration(labelText: 'Description'),
             onChanged: (value) => description = value,
-            controller: TextEditingController(text: widget.description),
           ),
           Row(
             children: [
@@ -104,7 +120,8 @@ class _NoteDialogState extends State<NoteDialog> {
                 onPressed: pickReminderTime,
               ),
               if (reminderTime != null)
-                Text('${reminderTime!.year}-${reminderTime!.month}-${reminderTime!.day} ${reminderTime!.hour}:${reminderTime!.minute}'),
+                Text(
+                    '${reminderTime!.year}-${reminderTime!.month}-${reminderTime!.day} ${reminderTime!.hour}:${reminderTime!.minute}'),
             ],
           ),
         ],

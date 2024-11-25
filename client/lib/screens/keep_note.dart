@@ -60,8 +60,9 @@ class _KeepNoteScreenState extends State<KeepNoteScreen> {
     } else {
       setState(() {
         filteredNotes = notes.where((note) {
-          final title = note.getTitle().toLowerCase();
-          final description = note.getDescription().toLowerCase();
+          final title = (note['title'] ?? '').toString().toLowerCase();
+          final description =
+              (note['description'] ?? '').toString().toLowerCase();
           return title.contains(query.toLowerCase()) ||
               description.contains(query.toLowerCase());
         }).toList();
@@ -167,16 +168,26 @@ class _KeepNoteScreenState extends State<KeepNoteScreen> {
                 showDialog(
                   context: context,
                   builder: (context) => NoteDialog(
-                    noteId: note['_id'], // Add `_id` to BasicNote if needed
-                    title: note.getTitle(),
-                    description: note.getDescription(),
-                    isPinned: note.isPinned(),
-                    reminderTime: note.getReminderTime(),
+                    noteId: note['_id'], // Ensure _id exists in the note map
+                    title: note['title'] ?? '',
+                    description: note['description'] ?? '',
+                    isPinned: note['is_pinned'] ?? false,
+                    reminderTime: note['reminder_time'] != null
+                        ? DateTime.parse(note['reminder_time'])
+                        : null,
                     onSave: (title, description, isPinned, reminderTime) {
                       editNote(note['_id'], title, description, isPinned,
                           reminderTime);
                     },
-                    onDelete: () => deleteNote(note['_id']),
+                    onDelete: () {
+                      deleteNote(note['_id']).then((_) {
+                        Navigator.pop(
+                            context); // Close the dialog after deletion
+                      }).catchError((e) {
+                        print(
+                            'Error deleting note: $e'); // Handle errors if necessary
+                      });
+                    },
                   ),
                 );
               },

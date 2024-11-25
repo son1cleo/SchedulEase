@@ -34,7 +34,7 @@ exports.createNote = async (req, res) => {
   }
 };
 
-// Get all notes for a specific user
+// Get all notes for a specific user along with their reminders
 exports.getNotes = async (req, res) => {
   console.log('Received GET /notes/:userId request');
   console.log('Params:', req.params);
@@ -49,10 +49,25 @@ exports.getNotes = async (req, res) => {
     const userObjectId = new mongoose.Types.ObjectId(userId);
 
     // Find notes using the userObjectId
-    const notes = await Note.find({ user_id: userObjectId });
-    console.log('Notes fetched:', notes);
+    const notes = await Note.find({ user_id: userObjectId }).lean(); // Use .lean() for better performance
 
-    res.status(200).json(notes);
+    if (!notes.length) {
+      return res.status(404).json({ message: 'No notes found for this user' });
+    }
+
+    // Fetch reminders for each note
+    const noteIds = notes.map(note => note._id); // Extract all note IDs
+    const reminders = await Reminder.find({ note_id: { $in: noteIds } });
+
+    // Attach reminders to corresponding notes
+    const notesWithReminders = notes.map(note => {
+      const noteReminders = reminders.filter(reminder => reminder.note_id.toString() === note._id.toString());
+      return { ...note, reminders: noteReminders };
+    });
+
+    console.log('Notes with reminders:', notesWithReminders);
+
+    res.status(200).json(notesWithReminders);
   } catch (err) {
     console.error('Error fetching notes:', err.message);
     res.status(500).json({ error: err.message });
@@ -96,7 +111,7 @@ exports.deleteNote = async (req, res) => {
     if (!note) {
       return res.status(404).json({ error: 'Note not found' });
     }
-    res.status(204).send(); // No content
+    res.status(200).send(); // No content
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
