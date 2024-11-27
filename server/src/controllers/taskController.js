@@ -1,7 +1,7 @@
 // Create a new task
 const mongoose = require('mongoose');
 const Task = require('../models/task');
-const ChecklistItem = require('../models/checklistItem');
+const ChecklistItem = require('../models/checkListItem');
 
 exports.createTask = async (req, res) => {
   try {
