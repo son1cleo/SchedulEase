@@ -77,17 +77,36 @@ class TaskService {
     }
   }
 
-  // Update an existing task
   Future<Map<String, dynamic>> updateTask(
       String id, Map<String, dynamic> updates) async {
     try {
+      // Ensure user ID is attached to updates
       final userId = userProvider.userId;
+      if (userId == null || userId.isEmpty) {
+        throw Exception("User is not authenticated.");
+      }
+
       updates['user_id'] = userId; // Ensure user_id is part of the updates
+
+      // Make sure that 'details' (checklist items) is being sent correctly
+      if (updates['type'] == 'Checklist' && updates['details'] != null) {
+        // Ensure details contain correct structure
+        updates['details'] = updates['details'].map((item) {
+          return {
+            '_id': item['_id'],
+            'completed': item['completed'] ??
+                false, // Ensure boolean value for 'completed'
+          };
+        }).toList();
+      }
+
       final response = await http.put(
         Uri.parse('$baseUrl/$id'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(updates),
       );
+
+      // Handle the response based on status code
       if (response.statusCode == 200) {
         return json.decode(response.body);
       } else {
@@ -95,6 +114,7 @@ class TaskService {
         throw Exception("Failed to update task: ${error['message']}");
       }
     } catch (e) {
+      // Handle any errors that occurred during the request or the process
       throw Exception("Error updating task: $e");
     }
   }
