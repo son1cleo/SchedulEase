@@ -45,10 +45,6 @@ class _SmartSchedulingScreenState extends State<SmartSchedulingScreen> {
 
   // Show task details in a modal bottom sheet
   void _showTaskDetails(Map<String, dynamic> task) {
-    final _formKey = GlobalKey<FormState>();
-    String? updatedTitle = task['title'];
-    String? updatedStatus = task['status'];
-
     showDialog(
       context: context,
       builder: (context) {
@@ -56,163 +52,157 @@ class _SmartSchedulingScreenState extends State<SmartSchedulingScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          content: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  task['title'],
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 10),
-                Text(
-                  'Type: ${task['type']}',
-                  style: TextStyle(fontSize: 16),
-                ),
-                if (task['type'] == 'Checklist')
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(height: 8),
-                      Text('Checklist:', style: TextStyle(fontSize: 16)),
-                      ...List.generate(
-                        task['details'].length,
-                        (index) {
-                          final item = task['details'][index];
-                          final isCompleted = item['completed'] == true;
-
-                          return Row(
-                            key: Key(task['details'][index]['_id']),
-                            children: [
-                              Checkbox(
-                                value: isCompleted,
-                                onChanged: (task['status'] == 'Completed')
-                                    ? null // Disable if task is already completed
-                                    : (bool? value) async {
-                                        if (value == null) return;
-
-                                        // Optimistically update the state
-                                        setState(() {
-                                          task['details'][index]['completed'] =
-                                              value;
-                                        });
-
-                                        try {
-                                          // Send the PUT request to update the checklist
-                                          await taskService
-                                              .updateTask(task['_id'], {
-                                            'details':
-                                                task['details'].map((detail) {
-                                              return {
-                                                '_id': detail['_id'],
-                                                'completed':
-                                                    detail['completed'],
-                                              };
-                                            }).toList(),
-                                          });
-
-                                          // Check if all items are completed
-                                          final allCompleted = task['details']
-                                              .every((item) =>
-                                                  item['completed'] == true);
-
-                                          if (allCompleted) {
-                                            // Update the task status to "Completed"
-                                            await taskService
-                                                .updateTask(task['_id'], {
-                                              'status': 'Completed',
-                                            });
-
-                                            // Update task state in the frontend
-                                            setState(() {
-                                              task['status'] = 'Completed';
-                                            });
-                                          }
-                                        } catch (e) {
-                                          print(
-                                              "Error updating checklist item: $e");
-
-                                          // Revert the UI state if an error occurs
-                                          setState(() {
-                                            task['details'][index]
-                                                ['completed'] = !value;
-                                          });
-                                        }
-                                      },
-                              ),
-                              Expanded(
-                                child: Text(
-                                  item['item'],
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    decoration: isCompleted
-                                        ? TextDecoration.lineThrough
-                                        : TextDecoration.none,
-                                    color: isCompleted
-                                        ? Colors.grey
-                                        : Colors.black,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                SizedBox(height: 10),
-                Text(
-                  'Scheduled Date: ${task['schedule_date']}',
-                  style: TextStyle(fontSize: 16),
-                ),
-                Text(
-                  'Scheduled Times: ${task['schedule_time'].join(', ')}',
-                  style: TextStyle(fontSize: 16),
-                ),
-                Text(
-                  'Status: ${task['status']}',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color:
-                        task['status'] == 'Overdue' ? Colors.red : Colors.black,
-                  ),
-                ),
-                SizedBox(height: 20),
-                Row(
+          content: StatefulBuilder(
+            builder: (context, setState) {
+              return Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    ElevatedButton(
-                      onPressed: (task['status'] == 'Completed')
-                          ? null
-                          : () {
-                              _updateTaskStatus(task, 'Completed');
-                              Navigator.pop(context);
-                            },
-                      child: Text('Mark as Completed'),
+                    Text(
+                      task['title'],
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                     ),
-                    SizedBox(width: 10),
-                    ElevatedButton(
-                      onPressed: () {
-                        _deleteTask(task['_id']);
-                        Navigator.pop(context);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
+                    SizedBox(height: 10),
+                    Text(
+                      'Type: ${task['type']}',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                    if (task['type'] == 'Description')
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: Text(
+                          'Details: ${task['details']}',
+                          style: TextStyle(fontSize: 16),
+                        ),
                       ),
-                      child: Text('Delete Task'),
+                    if (task['type'] == 'Checklist')
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(height: 8),
+                          Text('Checklist:', style: TextStyle(fontSize: 16)),
+                          ...List.generate(
+                            task['details'].length,
+                            (index) {
+                              final item = task['details'][index];
+                              final isCompleted = item['completed'] == true;
+
+                              return Row(
+                                children: [
+                                  Checkbox(
+                                    value: isCompleted,
+                                    onChanged: (task['status'] == 'Completed')
+                                        ? null
+                                        : (bool? value) async {
+                                            try {
+                                              setState(() {
+                                                item['completed'] = value;
+                                              });
+
+                                              // Update checklist in the backend
+                                              final updatedDetails = List<
+                                                      Map<String,
+                                                          dynamic>>.from(
+                                                  task['details']);
+                                              updatedDetails[index]
+                                                  ['completed'] = value;
+
+                                              await taskService.updateTask(
+                                                task['_id'],
+                                                {
+                                                  'details': updatedDetails,
+                                                },
+                                              );
+
+                                              // Check if all items are completed
+                                              final allCompleted =
+                                                  updatedDetails.every(
+                                                      (detail) =>
+                                                          detail['completed'] ==
+                                                          true);
+
+                                              if (allCompleted) {
+                                                // Update the task status to "Completed"
+                                                await taskService.updateTask(
+                                                  task['_id'],
+                                                  {'status': 'Completed'},
+                                                );
+                                                setState(() {
+                                                  task['status'] = 'Completed';
+                                                });
+                                                _fetchTasks();
+                                              }
+                                            } catch (e) {
+                                              print(
+                                                  "Error updating checklist item: $e");
+                                            }
+                                          },
+                                  ),
+                                  Text(item['item'] ?? '',
+                                      style: TextStyle(fontSize: 16)),
+                                ],
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    SizedBox(height: 10),
+                    Text(
+                      'Scheduled Date: ${task['schedule_date']}',
+                      style: TextStyle(fontSize: 16),
                     ),
-                    SizedBox(width: 10),
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
-                      child: Text('Cancel'),
+                    Text(
+                      'Scheduled Times: ${task['schedule_time'].join(', ')}',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                    Text(
+                      'Status: ${task['status']}',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: task['status'] == 'Overdue'
+                            ? Colors.red
+                            : Colors.black,
+                      ),
+                    ),
+                    SizedBox(height: 20),
+                    Row(
+                      children: [
+                        ElevatedButton(
+                          onPressed: (task['status'] == 'Completed')
+                              ? null // Disable if already completed
+                              : () {
+                                  _updateTaskStatus(task, 'Completed');
+                                  Navigator.pop(context);
+                                },
+                          child: Text('Mark as Completed'),
+                        ),
+                        SizedBox(width: 10),
+                        ElevatedButton(
+                          onPressed: () {
+                            _deleteTask(task['_id']);
+                            Navigator.pop(context);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                          ),
+                          child: Text('Delete Task'),
+                        ),
+                        SizedBox(width: 10),
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                          },
+                          child: Text('Cancel'),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
+              );
+            },
           ),
         );
       },
