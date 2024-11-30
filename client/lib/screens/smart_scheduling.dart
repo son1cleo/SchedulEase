@@ -89,6 +89,8 @@ class _SmartSchedulingScreenState extends State<SmartSchedulingScreen> {
                         task['details'].length,
                         (index) {
                           final item = task['details'][index];
+                          final isCompleted = item['completed'] == true;
+
                           return Row(
                             children: [
                               Checkbox(
@@ -145,7 +147,7 @@ class _SmartSchedulingScreenState extends State<SmartSchedulingScreen> {
                                         }
                                       },
                               ),
-                              Text(item['name'],
+                              Text(item['item'],
                                   style: TextStyle(fontSize: 16)),
                             ],
                           );
