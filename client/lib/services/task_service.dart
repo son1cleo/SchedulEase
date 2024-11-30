@@ -83,6 +83,16 @@ class TaskService {
     try {
       final userId = userProvider.userId;
       updates['user_id'] = userId; // Ensure user_id is part of the updates
+      // Ensure checklist details are formatted correctly
+      if (updates.containsKey('details')) {
+        updates['details'] =
+            (updates['details'] as List<dynamic>).map((detail) {
+          return {
+            '_id': detail['_id'],
+            'completed': detail['completed'], // Must be a bool
+          };
+        }).toList();
+      }
       final response = await http.put(
         Uri.parse('$baseUrl/$id'),
         headers: {'Content-Type': 'application/json'},

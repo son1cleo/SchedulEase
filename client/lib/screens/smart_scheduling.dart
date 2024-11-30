@@ -93,49 +93,57 @@ class _SmartSchedulingScreenState extends State<SmartSchedulingScreen> {
                             children: [
                               Checkbox(
                                 value: item['completed'],
-                                onChanged: (bool? value) async {
-                                  try {
-                                    final updatedDetails =
-                                        List<Map<String, dynamic>>.from(
-                                      task['details'],
-                                    );
-                                    updatedDetails[index]['completed'] = value;
+                                onChanged: (task['status'] == 'Completed')
+                                    ? null // Disable if task is already completed
+                                    : (bool? value) async {
+                                        try {
+                                          final updatedDetails =
+                                              List<Map<String, dynamic>>.from(
+                                            task['details'],
+                                          );
+                                          updatedDetails[index]['completed'] =
+                                              value;
 
-                                    // Send the PUT request to update the checklist
-                                    await taskService.updateTask(task['_id'], {
-                                      'details': updatedDetails.map((detail) {
-                                        return {
-                                          '_id': detail['_id'],
-                                          'completed': detail['completed'],
-                                        };
-                                      }).toList(),
-                                    });
+                                          // Send the PUT request to update the checklist
+                                          await taskService
+                                              .updateTask(task['_id'], {
+                                            'details':
+                                                updatedDetails.map((detail) {
+                                              return {
+                                                '_id': detail['_id'],
+                                                'completed':
+                                                    detail['completed'],
+                                              };
+                                            }).toList(),
+                                          });
 
-                                    setState(() {
-                                      task['details'] = updatedDetails;
-                                    });
+                                          setState(() {
+                                            task['details'] = updatedDetails;
+                                          });
 
-                                    // Check if all items are completed
-                                    final allCompleted = updatedDetails.every(
-                                      (item) => item['completed'] == true,
-                                    );
+                                          // Check if all items are completed
+                                          final allCompleted =
+                                              updatedDetails.every(
+                                            (item) => item['completed'] == true,
+                                          );
 
-                                    if (allCompleted) {
-                                      // Update the task status to "Completed"
-                                      await taskService
-                                          .updateTask(task['_id'], {
-                                        'status': 'Completed',
-                                      });
+                                          if (allCompleted) {
+                                            // Update the task status to "Completed"
+                                            await taskService
+                                                .updateTask(task['_id'], {
+                                              'status': 'Completed',
+                                            });
 
-                                      setState(() {
-                                        task['status'] = 'Completed';
-                                      });
-                                    }
-                                    _fetchTasks(); // Refresh tasks
-                                  } catch (e) {
-                                    print("Error updating checklist item: $e");
-                                  }
-                                },
+                                            setState(() {
+                                              task['status'] = 'Completed';
+                                            });
+                                          }
+                                          _fetchTasks(); // Refresh tasks
+                                        } catch (e) {
+                                          print(
+                                              "Error updating checklist item: $e");
+                                        }
+                                      },
                               ),
                               Text(item['name'],
                                   style: TextStyle(fontSize: 16)),
@@ -166,10 +174,12 @@ class _SmartSchedulingScreenState extends State<SmartSchedulingScreen> {
                 Row(
                   children: [
                     ElevatedButton(
-                      onPressed: () {
-                        _updateTaskStatus(task, 'Completed');
-                        Navigator.pop(context);
-                      },
+                      onPressed: (task['status'] == 'Completed')
+                          ? null // Disable if already completed
+                          : () {
+                              _updateTaskStatus(task, 'Completed');
+                              Navigator.pop(context);
+                            },
                       child: Text('Mark as Completed'),
                     ),
                     SizedBox(width: 10),
@@ -182,79 +192,6 @@ class _SmartSchedulingScreenState extends State<SmartSchedulingScreen> {
                         backgroundColor: Colors.red,
                       ),
                       child: Text('Delete Task'),
-                    ),
-                    SizedBox(width: 10),
-                    ElevatedButton(
-                      onPressed: () {
-                        // Open update dialog
-                        Navigator.pop(context);
-                        showDialog(
-                          context: context,
-                          builder: (context) {
-                            return AlertDialog(
-                              title: Text('Update Task'),
-                              content: Form(
-                                key: _formKey,
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    TextFormField(
-                                      initialValue: task['title'],
-                                      decoration:
-                                          InputDecoration(labelText: 'Title'),
-                                      onChanged: (value) =>
-                                          updatedTitle = value,
-                                      validator: (value) =>
-                                          value == null || value.isEmpty
-                                              ? 'Title is required'
-                                              : null,
-                                    ),
-                                    DropdownButtonFormField<String>(
-                                      value: updatedStatus,
-                                      decoration:
-                                          InputDecoration(labelText: 'Status'),
-                                      items: ['To-do', 'Completed', 'Overdue']
-                                          .map((status) => DropdownMenuItem(
-                                                value: status,
-                                                child: Text(status),
-                                              ))
-                                          .toList(),
-                                      onChanged: (value) =>
-                                          updatedStatus = value,
-                                      validator: (value) => value == null
-                                          ? 'Status is required'
-                                          : null,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: Text('Cancel'),
-                                ),
-                                ElevatedButton(
-                                  onPressed: () {
-                                    if (_formKey.currentState!.validate()) {
-                                      _updateTaskStatus(
-                                        task,
-                                        updatedStatus!,
-                                      );
-                                      setState(() {
-                                        task['title'] = updatedTitle;
-                                        task['status'] = updatedStatus;
-                                      });
-                                      Navigator.pop(context);
-                                    }
-                                  },
-                                  child: Text('Update'),
-                                ),
-                              ],
-                            );
-                          },
-                        );
-                      },
-                      child: Text('Update'),
                     ),
                     SizedBox(width: 10),
                     ElevatedButton(
