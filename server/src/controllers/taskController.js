@@ -14,7 +14,12 @@ exports.createTask = async (req, res) => {
 
     let checklistItemIds = [];
     if (type === 'Checklist') {
-      const checklistItems = await ChecklistItem.insertMany(details);
+      // Ensure that the checklist items have a 'completed' field (defaulting to false)
+      const checklistItems = await ChecklistItem.insertMany(details.map(item => ({
+        item: item.item,
+        completed: item.completed !== undefined ? item.completed : false, // Default to false if not specified
+      })));
+
       checklistItemIds = checklistItems.map(item => item._id);
     }
 
@@ -28,7 +33,6 @@ exports.createTask = async (req, res) => {
       status,
     });
 
-
     await task.save();
     res.status(200).json(task);
   } catch (err) {
@@ -36,6 +40,7 @@ exports.createTask = async (req, res) => {
     res.status(400).json({ message: `Failed to create task: ${err.message}` });
   }
 };
+
 
 
 // Update a task
@@ -60,7 +65,6 @@ exports.updateTask = async (req, res) => {
       task.status = updates.status;
     }
 
-    // If updating checklist item completion status
     if (updates.details && updates.type === 'Checklist') {
       // Update checklist items
       for (const item of updates.details) {
@@ -87,7 +91,6 @@ exports.updateTask = async (req, res) => {
   }
 };
 
-
 // Get tasks by user_id
 exports.getTasks = async (req, res) => {
   const { user_id } = req.params;
@@ -98,17 +101,33 @@ exports.getTasks = async (req, res) => {
 
   try {
     const tasks = await Task.find({ user_id })
-      .populate('details')  // Populate the details field with ChecklistItem documents
       .sort({ createdAt: -1 });
+
     if (tasks.length === 0) {
       return res.status(404).json({ message: 'No tasks found for this user' });
     }
+
+    // For each task, if it is of type 'Checklist', manually populate the 'details' field
+    for (let task of tasks) {
+      if (task.type === 'Checklist' && Array.isArray(task.details)) {
+        // Find all ChecklistItem documents by their ObjectIds in the 'details' array
+        const checklistItems = await ChecklistItem.find({
+          '_id': { $in: task.details }  // Match all ObjectIds in the 'details' array
+        }).select('item completed');  // Only select 'item' and 'completed' fields
+
+        // Replace the 'details' array with the populated checklist items
+        task.details = checklistItems;
+      }
+    }
+
+    // Return the tasks with populated 'details'
     res.status(200).json(tasks);
   } catch (error) {
     console.error("Error fetching tasks:", error.message);
     res.status(500).json({ message: `Error fetching tasks: ${error.message}` });
   }
 };
+
 
 
 // Delete a task
