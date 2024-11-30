@@ -6,8 +6,7 @@ class NoteService {
 
   Future<List<dynamic>> fetchNotes(String userId) async {
     try {
-      final Uri url = Uri.parse(
-          '$baseUrl/notes/$userId'); // Use user_id to match the backend
+      final Uri url = Uri.parse('$baseUrl/notes/$userId'); // Use user_id to match the backend
       print('Fetching notes from: $url');
 
       final response = await http.get(url);
@@ -84,8 +83,7 @@ class NoteService {
 
   Future<List<dynamic>> fetchReminders(String userId) async {
     try {
-      final Uri url = Uri.parse(
-          '$baseUrl/reminders/$userId'); // Use user_id to match the backend
+      final Uri url = Uri.parse('$baseUrl/reminders/$userId'); // Use user_id to match the backend
       print('Fetching reminders from: $url');
 
       final response = await http.get(url);

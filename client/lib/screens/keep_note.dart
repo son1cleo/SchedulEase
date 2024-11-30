@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-// import 'package:client/widgets/note_grid.dart';
-import '../components/NoteGrid.dart';
-import '../components/NoteDialog.dart';
 import '../services/note_service.dart';
 import '../providers/user_provider.dart';
+import '../components/NoteGrid.dart';
+import '../components/NoteDialog.dart';
 
 class KeepNoteScreen extends StatefulWidget {
   @override
@@ -32,21 +31,26 @@ class _KeepNoteScreenState extends State<KeepNoteScreen> {
       final fetchedNotes = await noteService.fetchNotes(userId);
       final fetchedReminders = await noteService.fetchReminders(userId);
 
-      print('Fetched notes: $fetchedNotes');
-      print('Mapped notes: $notes');
-
       setState(() {
-        notes = fetchedNotes.map((note) {
+        notes = List<Map<String, dynamic>>.from(fetchedNotes.map((note) {
           final reminder = fetchedReminders.firstWhere(
             (r) => r['note_id'] == note['_id'],
             orElse: () => null,
           );
-          return {...note, 'reminder_time': reminder?['reminder_time']};
-        }).toList();
-        filteredNotes = notes; // Ensure the filtered list is updated
-      });
 
-      print('Notes after mapping: $notes');
+          return {
+            ...Map<String, dynamic>.from(note),
+            'reminder_time': reminder?['reminder_time'] ??
+                'No reminder', // Make sure it's a string
+            'description': note['description'] ?? '',
+            'checklist': note['checklist'] != null
+                ? List<Map<String, dynamic>>.from(note['checklist'])
+                : [],
+          };
+        }).toList());
+
+        filteredNotes = notes;
+      });
     } catch (e) {
       print('Error fetching notes: $e');
     }
@@ -71,7 +75,7 @@ class _KeepNoteScreenState extends State<KeepNoteScreen> {
   }
 
   Future<void> addNote(String title, String description, bool isPinned,
-      DateTime? reminderTime) async {
+      DateTime? reminderTime, List<Map<String, dynamic>> checklist) async {
     try {
       final userId =
           Provider.of<UserProvider>(context, listen: false).user?['_id'];
@@ -81,6 +85,12 @@ class _KeepNoteScreenState extends State<KeepNoteScreen> {
         'user_id': userId,
         'title': title,
         'description': description,
+        'checklist': checklist.map((item) {
+          return {
+            'item': item['item'],
+            'completed': item['completed'] ?? false,
+          };
+        }).toList(),
         'is_pinned': isPinned,
         'reminder_time': reminderTime?.toIso8601String(),
       };
@@ -92,18 +102,29 @@ class _KeepNoteScreenState extends State<KeepNoteScreen> {
     }
   }
 
-  Future<void> editNote(String noteId, String title, String description,
-      bool isPinned, DateTime? reminderTime) async {
+  Future<void> editNote(
+      String noteId,
+      String title,
+      String description,
+      bool isPinned,
+      DateTime? reminderTime,
+      List<Map<String, dynamic>> checklist) async {
     try {
       final noteData = {
         'title': title,
         'description': description,
+        'checklist': checklist
+            .map((item) => {
+                  'item': item['item'], // Ensure 'item' is present
+                  'completed': item['completed'] ?? false,
+                })
+            .toList(),
         'is_pinned': isPinned,
         'reminder_time': reminderTime?.toIso8601String(),
       };
 
       await noteService.updateNote(noteId, noteData);
-      await fetchNotes();
+      await fetchNotes(); // Refresh notes after update
     } catch (e) {
       print('Error editing note: $e');
     }
@@ -111,29 +132,20 @@ class _KeepNoteScreenState extends State<KeepNoteScreen> {
 
   Future<void> deleteNote(String noteId) async {
     try {
-      await noteService.deleteNote(noteId);
-      await fetchNotes();
+      await noteService.deleteNote(
+          noteId); // This deletes the note, reminders, and checklists
+      await fetchNotes(); // Refresh notes list after deletion
     } catch (e) {
       print('Error deleting note: $e');
     }
   }
 
-  Future<void> addReminder(String noteId, DateTime reminderTime) async {
+  Future<void> pinNote(String noteId, bool isPinned) async {
     try {
-      final userId =
-          Provider.of<UserProvider>(context, listen: false).user?['_id'];
-      if (userId == null) return;
-
-      final reminderData = {
-        'user_id': userId,
-        'note_id': noteId,
-        'reminder_time': reminderTime.toIso8601String(),
-      };
-
-      await noteService.createReminder(reminderData);
-      fetchNotes();
+      await noteService.updateNote(noteId, {'is_pinned': !isPinned});
+      await fetchNotes(); // Re-fetch the notes after pin/unpin
     } catch (e) {
-      print('Error adding reminder: $e');
+      print('Error pinning note: $e');
     }
   }
 
@@ -155,7 +167,7 @@ class _KeepNoteScreenState extends State<KeepNoteScreen> {
             icon: Icon(Icons.clear),
             onPressed: () {
               searchController.clear();
-              filterNotes(''); // Reset the filtered list
+              filterNotes('');
             },
           ),
         ],
@@ -168,26 +180,20 @@ class _KeepNoteScreenState extends State<KeepNoteScreen> {
                 showDialog(
                   context: context,
                   builder: (context) => NoteDialog(
-                    noteId: note['_id'], // Ensure _id exists in the note map
+                    noteId: note['_id'],
                     title: note['title'] ?? '',
                     description: note['description'] ?? '',
                     isPinned: note['is_pinned'] ?? false,
                     reminderTime: note['reminder_time'] != null
                         ? DateTime.parse(note['reminder_time'])
                         : null,
-                    onSave: (title, description, isPinned, reminderTime) {
+                    checklist: note['checklist'] ?? [],
+                    onSave: (title, description, isPinned, reminderTime,
+                        checklist) {
                       editNote(note['_id'], title, description, isPinned,
-                          reminderTime);
+                          reminderTime, checklist);
                     },
-                    onDelete: () {
-                      deleteNote(note['_id']).then((_) {
-                        Navigator.pop(
-                            context); // Close the dialog after deletion
-                      }).catchError((e) {
-                        print(
-                            'Error deleting note: $e'); // Handle errors if necessary
-                      });
-                    },
+                    onDelete: () => deleteNote(note['_id']),
                   ),
                 );
               },
@@ -195,7 +201,7 @@ class _KeepNoteScreenState extends State<KeepNoteScreen> {
                 final updatedNote = {...note, 'is_pinned': !note['is_pinned']};
                 await noteService.updateNote(
                     note['_id'], updatedNote.cast<String, dynamic>());
-                fetchNotes(); // Refresh notes
+                fetchNotes();
               },
             ),
       floatingActionButton: FloatingActionButton(
@@ -203,9 +209,16 @@ class _KeepNoteScreenState extends State<KeepNoteScreen> {
           showDialog(
             context: context,
             builder: (context) => NoteDialog(
-              onSave: (title, description, isPinned, reminderTime) {
-                addNote(title, description, isPinned, reminderTime);
+              noteId: '',
+              title: '',
+              description: '',
+              isPinned: false,
+              reminderTime: null,
+              checklist: [],
+              onSave: (title, description, isPinned, reminderTime, checklist) {
+                addNote(title, description, isPinned, reminderTime, checklist);
               },
+              onDelete: () {},
             ),
           );
         },

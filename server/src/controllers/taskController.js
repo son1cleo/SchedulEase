@@ -65,15 +65,18 @@ exports.updateTask = async (req, res) => {
       task.status = updates.status;
     }
 
-    if (updates.details && updates.type === 'Checklist') {
+    if (updates.details) {
       // Update checklist items
       for (const item of updates.details) {
-        const checklistItem = await ChecklistItem.findById(item._id);
-        if (checklistItem) {
-          checklistItem.completed = item.completed;  // Update completed status of checklist item
-          await checklistItem.save();
-        }
+        await Promise.all(updates.details.map(async (item) => {
+          const checklistItem = await ChecklistItem.findById(item._id);
+          if (checklistItem) {
+            checklistItem.completed = item.completed;
+            await checklistItem.save();
+          }
+        }));
       }
+
 
       // Check if all checklist items are completed, then set task status to "Completed"
       const allCompleted = task.details.every(item => item.completed);

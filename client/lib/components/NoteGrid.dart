@@ -27,33 +27,12 @@ class NoteGrid extends StatelessWidget {
       itemBuilder: (context, index) {
         final note = notes[index];
 
-        // Safely extract and format created_at
-        final createdAtFormatted = note['created_at'] != null
-            ? formatDateTime(note['created_at'])
-            : 'N/A';
-
         return NoteCard(
           note: note,
-          createdAtFormatted: createdAtFormatted,
           onView: () => onView(note),
           onPinToggle: () => onPinToggle(note),
         );
       },
     );
-  }
-
-  /// Helper function to format the `created_at` field
-  String formatDateTime(dynamic date) {
-    try {
-      if (date is String) {
-        // Parse and format if the date is a String
-        return DateTime.parse(date).toLocal().toString(); // Adjust as needed
-      } else if (date is DateTime) {
-        return date.toLocal().toString(); // Adjust as needed
-      }
-    } catch (e) {
-      print('Error formatting date: $e');
-    }
-    return 'Invalid date';
   }
 }
