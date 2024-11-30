@@ -80,13 +80,6 @@ class TaskService {
   Future<Map<String, dynamic>> updateTask(
       String id, Map<String, dynamic> updates) async {
     try {
-      // Ensure user ID is attached to updates
-      final userId = userProvider.userId;
-      if (userId == null || userId.isEmpty) {
-        throw Exception("User is not authenticated.");
-      }
-
-      updates['user_id'] = userId; // Ensure user_id is part of the updates
       // Ensure checklist details are formatted correctly
       if (updates.containsKey('details')) {
         updates['details'] =
@@ -97,11 +90,13 @@ class TaskService {
           };
         }).toList();
       }
+      print('Updates body: ${updates}');
       final response = await http.put(
         Uri.parse('$baseUrl/$id'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(updates),
       );
+      print('Response body on update: ${response.body}');
 
       // Handle the response based on status code
       if (response.statusCode == 200) {

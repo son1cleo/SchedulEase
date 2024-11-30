@@ -71,14 +71,6 @@ class _SmartSchedulingScreenState extends State<SmartSchedulingScreen> {
                   'Type: ${task['type']}',
                   style: TextStyle(fontSize: 16),
                 ),
-                if (task['type'] == 'Description')
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: Text(
-                      'Details: ${task['details']}',
-                      style: TextStyle(fontSize: 16),
-                    ),
-                  ),
                 if (task['type'] == 'Checklist')
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -92,25 +84,27 @@ class _SmartSchedulingScreenState extends State<SmartSchedulingScreen> {
                           final isCompleted = item['completed'] == true;
 
                           return Row(
+                            key: Key(task['details'][index]['_id']),
                             children: [
                               Checkbox(
-                                value: item['completed'],
+                                value: isCompleted,
                                 onChanged: (task['status'] == 'Completed')
                                     ? null // Disable if task is already completed
                                     : (bool? value) async {
-                                        try {
-                                          final updatedDetails =
-                                              List<Map<String, dynamic>>.from(
-                                            task['details'],
-                                          );
-                                          updatedDetails[index]['completed'] =
-                                              value;
+                                        if (value == null) return;
 
+                                        // Optimistically update the state
+                                        setState(() {
+                                          task['details'][index]['completed'] =
+                                              value;
+                                        });
+
+                                        try {
                                           // Send the PUT request to update the checklist
                                           await taskService
                                               .updateTask(task['_id'], {
                                             'details':
-                                                updatedDetails.map((detail) {
+                                                task['details'].map((detail) {
                                               return {
                                                 '_id': detail['_id'],
                                                 'completed':
@@ -119,15 +113,10 @@ class _SmartSchedulingScreenState extends State<SmartSchedulingScreen> {
                                             }).toList(),
                                           });
 
-                                          setState(() {
-                                            task['details'] = updatedDetails;
-                                          });
-
                                           // Check if all items are completed
-                                          final allCompleted =
-                                              updatedDetails.every(
-                                            (item) => item['completed'] == true,
-                                          );
+                                          final allCompleted = task['details']
+                                              .every((item) =>
+                                                  item['completed'] == true);
 
                                           if (allCompleted) {
                                             // Update the task status to "Completed"
@@ -136,19 +125,37 @@ class _SmartSchedulingScreenState extends State<SmartSchedulingScreen> {
                                               'status': 'Completed',
                                             });
 
+                                            // Update task state in the frontend
                                             setState(() {
                                               task['status'] = 'Completed';
                                             });
                                           }
-                                          _fetchTasks(); // Refresh tasks
                                         } catch (e) {
                                           print(
                                               "Error updating checklist item: $e");
+
+                                          // Revert the UI state if an error occurs
+                                          setState(() {
+                                            task['details'][index]
+                                                ['completed'] = !value;
+                                          });
                                         }
                                       },
                               ),
-                              Text(item['item'],
-                                  style: TextStyle(fontSize: 16)),
+                              Expanded(
+                                child: Text(
+                                  item['item'],
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    decoration: isCompleted
+                                        ? TextDecoration.lineThrough
+                                        : TextDecoration.none,
+                                    color: isCompleted
+                                        ? Colors.grey
+                                        : Colors.black,
+                                  ),
+                                ),
+                              ),
                             ],
                           );
                         },
@@ -177,7 +184,7 @@ class _SmartSchedulingScreenState extends State<SmartSchedulingScreen> {
                   children: [
                     ElevatedButton(
                       onPressed: (task['status'] == 'Completed')
-                          ? null // Disable if already completed
+                          ? null
                           : () {
                               _updateTaskStatus(task, 'Completed');
                               Navigator.pop(context);
