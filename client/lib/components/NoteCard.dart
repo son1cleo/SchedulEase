@@ -1,67 +1,108 @@
 import 'package:flutter/material.dart';
 
 class NoteCard extends StatelessWidget {
-  final dynamic note;
-  final String createdAtFormatted;
+  final Map<String, dynamic> note; // Ensure note is a Map with expected keys
   final VoidCallback onView;
-  final VoidCallback onPinToggle; // Add onPinToggle callback
+  final VoidCallback onPinToggle;
 
   const NoteCard({
     Key? key,
     required this.note,
-    required this.createdAtFormatted,
     required this.onView,
-    required this.onPinToggle, // Include onPinToggle as required
+    required this.onPinToggle,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    String reminderTimeFormatted = "";
+    // Check if reminder time exists and is valid
+    if (note['reminder_time'] != null) {
+      try {
+        DateTime reminderDate = DateTime.parse(note['reminder_time']);
+        reminderTimeFormatted = "${reminderDate.toLocal()}".split(' ')[0]; // Formatting the date to display it
+      } catch (e) {
+        reminderTimeFormatted = "Invalid date";
+      }
+    }
+
     return GestureDetector(
       onTap: onView,
       child: Card(
         elevation: 3.0,
         child: Padding(
-          padding: EdgeInsets.all(8.0),
+          padding: const EdgeInsets.all(8.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    note['title'],
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  Expanded(
+                    child: Text(
+                      note['title'] ?? 'Untitled',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16.0,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                   IconButton(
                     icon: Icon(
-                      note['is_pinned'] ? Icons.push_pin : Icons.push_pin_outlined,
-                      color: Colors.orange,
+                      (note['is_pinned'] ?? false)
+                          ? Icons.push_pin
+                          : Icons.push_pin_outlined,
+                      color: (note['is_pinned'] ?? false)
+                          ? Colors.orange
+                          : Colors.grey,
                     ),
-                    onPressed: onPinToggle, // Call onPinToggle when tapped
+                    onPressed: onPinToggle,
                   ),
                 ],
               ),
-              SizedBox(height: 4.0),
-              Expanded(
-                child: Text(
+              const SizedBox(height: 4.0),
+              // Show description or checklist based on the note
+              if (note['description'] != null && note['description'].isNotEmpty)
+                Text(
                   note['description'],
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 14.0),
                 ),
-              ),
-              if (note['reminder_time'] != null)
-                Row(
+              if (note['checklist'] != null && note['checklist'].isNotEmpty)
+                Column(
                   children: [
-                    Icon(Icons.alarm, size: 14, color: Colors.orange),
-                    SizedBox(width: 4.0),
-                    Text(
-                      note['reminder_time'],
-                      style: TextStyle(fontSize: 12),
-                    ),
+                    for (var item in note['checklist'])
+                      Row(
+                        children: [
+                          Icon(
+                            item['completed']
+                                ? Icons.check_box
+                                : Icons.check_box_outline_blank,
+                            color: item['completed']
+                                ? Colors.green
+                                : Colors.grey,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text(item['item'])),
+                        ],
+                      ),
                   ],
                 ),
-              Spacer(),
-              Text(createdAtFormatted, style: TextStyle(fontSize: 12)),
+              // Show reminder time if reminder exists
+              if (reminderTimeFormatted.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.alarm, size: 14, color: Colors.orange),
+                      const SizedBox(width: 4.0),
+                      Text(
+                        reminderTimeFormatted, // Display reminder time
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
             ],
           ),
         ),

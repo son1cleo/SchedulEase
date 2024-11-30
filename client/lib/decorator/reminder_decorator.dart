@@ -8,4 +8,7 @@ class ReminderDecorator extends NoteDecorator {
 
   @override
   DateTime? getReminderTime() => reminderTime;
+
+  @override
+  List<Map<String, dynamic>> getChecklist() => note.getChecklist();
 }
