@@ -1,12 +1,16 @@
 // lib/models/basic_note.dart
 import 'note.dart';
 
-class BasicNote extends Note {
+class BasicNote implements Note {
   final String title;
   final String description;
-  final DateTime? createdAt;
+  final DateTime? reminderTime;
 
-  BasicNote({ required this.title, required this.description, this.createdAt});
+  BasicNote({
+    required this.title,
+    required this.description,
+    this.reminderTime,
+  });
 
   @override
   String getTitle() => title;
@@ -15,8 +19,11 @@ class BasicNote extends Note {
   String getDescription() => description;
 
   @override
-  DateTime? getReminderTime() => createdAt;
+  DateTime? getReminderTime() => reminderTime;
 
   @override
   bool isPinned() => false;
+
+  @override
+  List<Map<String, dynamic>> getChecklist() => [];
 }

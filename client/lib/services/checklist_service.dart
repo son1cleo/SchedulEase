@@ -7,7 +7,7 @@ class ChecklistService {
 
   Future<List<dynamic>> fetchChecklist(String noteId) async {
     final response = await http.get(Uri.parse('$apiUrl/$noteId'));
-    if (response.statusCode == 200) {
+    if (response.statusCode == 204) {
       return json.decode(response.body);
     } else {
       throw Exception('Failed to fetch checklist');
@@ -20,7 +20,7 @@ class ChecklistService {
       headers: {'Content-Type': 'application/json'},
       body: json.encode({'note_id': noteId, 'content': content}),
     );
-    if (response.statusCode != 201) {
+    if (response.statusCode != 204) {
       throw Exception('Failed to create checklist item');
     }
   }
@@ -31,7 +31,7 @@ class ChecklistService {
       headers: {'Content-Type': 'application/json'},
       body: json.encode({'is_checked': isChecked}),
     );
-    if (response.statusCode != 200) {
+    if (response.statusCode != 204) {
       throw Exception('Failed to update checklist item');
     }
   }

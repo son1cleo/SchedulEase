@@ -3,4 +3,5 @@ abstract class Note {
   String getDescription();
   DateTime? getReminderTime();
   bool isPinned();
+  List<Map<String, dynamic>> getChecklist(); // Checklist method
 }
