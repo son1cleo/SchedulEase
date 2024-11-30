@@ -16,10 +16,11 @@ class NoteCard extends StatelessWidget {
   Widget build(BuildContext context) {
     String reminderTimeFormatted = "";
     // Check if reminder time exists and is valid
-    if (note['reminder_time'] != null) {
+    if (note['reminder_time'] != null && note['reminder_time'].isNotEmpty) {
       try {
+        // Attempt to parse the reminder_time and format it
         DateTime reminderDate = DateTime.parse(note['reminder_time']);
-        reminderTimeFormatted = "${reminderDate.toLocal()}".split(' ')[0]; // Formatting the date to display it
+        reminderTimeFormatted = "${reminderDate.toLocal()}".split(' ')[0] + " " + reminderDate.toLocal().toString().split(' ')[1]; // Format both date and time
       } catch (e) {
         reminderTimeFormatted = "Invalid date";
       }
@@ -89,7 +90,7 @@ class NoteCard extends StatelessWidget {
                   ],
                 ),
               // Show reminder time if reminder exists
-              if (reminderTimeFormatted.isNotEmpty)
+              if (reminderTimeFormatted.isNotEmpty && reminderTimeFormatted != "Invalid date")
                 Padding(
                   padding: const EdgeInsets.only(top: 8.0),
                   child: Row(
@@ -97,7 +98,7 @@ class NoteCard extends StatelessWidget {
                       const Icon(Icons.alarm, size: 14, color: Colors.orange),
                       const SizedBox(width: 4.0),
                       Text(
-                        reminderTimeFormatted, // Display reminder time
+                        reminderTimeFormatted, // Display both date and time
                         style: const TextStyle(fontSize: 12),
                       ),
                     ],

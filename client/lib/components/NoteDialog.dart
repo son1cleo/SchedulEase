@@ -7,7 +7,8 @@ class NoteDialog extends StatefulWidget {
   final bool isPinned;
   final DateTime? reminderTime;
   final List<Map<String, dynamic>> checklist;
-  final Function(String, String, bool, DateTime?, List<Map<String, dynamic>>) onSave;
+  final Function(String, String, bool, DateTime?, List<Map<String, dynamic>>)
+      onSave;
   final VoidCallback? onDelete;
 
   const NoteDialog({
@@ -30,7 +31,6 @@ class _NoteDialogState extends State<NoteDialog> {
   final TextEditingController titleController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
   List<Map<String, dynamic>> checklist = [];
-  bool isChecklist = false; // Whether checklist mode is active
   bool isPinned = false;
   DateTime? reminderTime; // Will store reminder time
 
@@ -42,8 +42,6 @@ class _NoteDialogState extends State<NoteDialog> {
     checklist = widget.checklist;
     isPinned = widget.isPinned;
     reminderTime = widget.reminderTime; // Initialize reminder time
-
-    isChecklist = checklist.isNotEmpty; // Enable checklist mode if checklist exists
   }
 
   // Method to update a checklist item
@@ -63,11 +61,12 @@ class _NoteDialogState extends State<NoteDialog> {
   // Method to add a new checklist item
   void addChecklistItem() {
     setState(() {
-      checklist.add({'item': '', 'completed': false}); // Add a new empty checklist item
+      checklist.add(
+          {'item': '', 'completed': false}); // Add a new empty checklist item
     });
   }
 
-  // Show the Date Picker to select reminder time
+  // Show the Date and Time Picker to select reminder time
   void pickReminderTime() async {
     DateTime? pickedTime = await showDatePicker(
       context: context,
@@ -77,9 +76,22 @@ class _NoteDialogState extends State<NoteDialog> {
     );
 
     if (pickedTime != null) {
-      setState(() {
-        reminderTime = pickedTime;
-      });
+      TimeOfDay? pickedTimeOfDay = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.fromDateTime(reminderTime ?? DateTime.now()),
+      );
+
+      if (pickedTimeOfDay != null) {
+        setState(() {
+          reminderTime = DateTime(
+            pickedTime.year,
+            pickedTime.month,
+            pickedTime.day,
+            pickedTimeOfDay.hour,
+            pickedTimeOfDay.minute,
+          );
+        });
+      }
     }
   }
 
@@ -94,51 +106,52 @@ class _NoteDialogState extends State<NoteDialog> {
             TextField(
               controller: titleController,
               decoration: InputDecoration(labelText: 'Title'),
+              autofocus: true,
             ),
-            if (!isChecklist)
-              TextField(
-                controller: descriptionController,
-                decoration: InputDecoration(labelText: 'Description'),
-                maxLines: 5,
-              ),
-            if (isChecklist)
-              Column(
-                children: [
-                  for (int i = 0; i < checklist.length; i++)
-                    Row(
-                      children: [
-                        Checkbox(
-                          value: checklist[i]['completed'],
-                          onChanged: (_) {
-                            setState(() {
-                              checklist[i]['completed'] =
-                                  !checklist[i]['completed'];
-                            });
-                          },
-                        ),
-                        Expanded(
-                          child: TextField(
-                            onChanged: (value) => updateChecklistItem(i, value),
-                            controller: TextEditingController(
-                              text: checklist[i]['item'],
-                            ),
-                            decoration: InputDecoration(
-                              hintText: 'Checklist item',
-                            ),
+            // Description field, shown if not in checklist mode
+            TextField(
+              controller: descriptionController,
+              decoration: InputDecoration(labelText: 'Description'),
+              maxLines: 5,
+            ),
+            // Checklist section
+            Column(
+              children: [
+                for (int i = 0; i < checklist.length; i++)
+                  Row(
+                    children: [
+                      Checkbox(
+                        value: checklist[i]['completed'],
+                        onChanged: (_) {
+                          setState(() {
+                            checklist[i]['completed'] =
+                                !checklist[i]['completed'];
+                          });
+                        },
+                      ),
+                      Expanded(
+                        child: TextField(
+                          onChanged: (value) => updateChecklistItem(i, value),
+                          controller: TextEditingController(
+                            text: checklist[i]['item'],
+                          ),
+                          decoration: InputDecoration(
+                            hintText: 'Checklist item',
                           ),
                         ),
-                        IconButton(
-                          icon: Icon(Icons.delete),
-                          onPressed: () => removeChecklistItem(i),
-                        ),
-                      ],
-                    ),
-                  TextButton(
-                    onPressed: addChecklistItem,
-                    child: Text('Add Item'),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.delete),
+                        onPressed: () => removeChecklistItem(i),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                TextButton(
+                  onPressed: addChecklistItem,
+                  child: Text('Add Checklist'),
+                ),
+              ],
+            ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -161,21 +174,12 @@ class _NoteDialogState extends State<NoteDialog> {
                 TextButton(
                   onPressed: pickReminderTime,
                   child: Text(reminderTime != null
-                      ? "${reminderTime!.toLocal()}".split(' ')[0]
+                      ? "${reminderTime!.toLocal()}".split(' ')[0] +
+                          " " +
+                          reminderTime!.toLocal().toString().split(' ')[1]
                       : "Pick Time"),
                 ),
               ],
-            ),
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  isChecklist = !isChecklist;
-                  if (!isChecklist) checklist.clear();
-                });
-              },
-              child: Text(isChecklist
-                  ? 'Switch to Description'
-                  : 'Switch to Checklist'),
             ),
           ],
         ),
@@ -183,16 +187,16 @@ class _NoteDialogState extends State<NoteDialog> {
       actions: [
         if (widget.onDelete != null)
           TextButton(
-            onPressed: widget.onDelete,
-            child: Text('Delete', style: TextStyle(color: Colors.red)),
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
           ),
         TextButton(
           onPressed: () {
             widget.onSave(
               titleController.text,
-              isChecklist ? '' : descriptionController.text,
+              descriptionController.text,
               isPinned,
-              reminderTime,
+              reminderTime, // Save reminder time
               checklist,
             );
             Navigator.of(context).pop();

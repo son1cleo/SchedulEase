@@ -5,7 +5,7 @@ const NoteSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String },
   checklists: [{ type: mongoose.Schema.Types.ObjectId, ref: 'ChecklistItem' }],
-  reminders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Reminder' }], // Adding the reminder reference here
+  reminders: { type: mongoose.Schema.Types.ObjectId, ref: 'Reminder' }, // Adding the reminder reference here
   is_pinned: { type: Boolean, default: false },
   created_at: { type: Date, default: Date.now },
   updated_at: { type: Date },
