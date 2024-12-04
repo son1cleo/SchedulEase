@@ -30,21 +30,25 @@ class _KeepNoteScreenState extends State<KeepNoteScreen> {
 
       final fetchedNotes = await noteService.fetchNotes(userId);
       final fetchedReminders = await noteService.fetchReminders(userId);
+      print('Fetched Notes: $fetchedNotes');
+      print('Fetched Reminders: $fetchedReminders');
 
       setState(() {
+        // Ensure `fetchedNotes` is a List of Maps
         notes = List<Map<String, dynamic>>.from(fetchedNotes.map((note) {
           final reminder = fetchedReminders.firstWhere(
-            (r) => r['note_id'] == note['_id'],
+            (r) => r['note_id'] != null && r['note_id']['_id'] == note['_id'],
             orElse: () => null,
           );
 
           return {
-            ...Map<String, dynamic>.from(note),
-            'reminder_time': reminder?['reminder_time'] ??
-                'No reminder', // Make sure it's a string
+            ...Map<String, dynamic>.from(
+                note), // Convert note to Map<String, dynamic>
+            'reminder_time':
+                reminder?['reminder_time'], // Handle reminder_time if available
             'description': note['description'] ?? '',
-            'checklist': note['checklist'] != null
-                ? List<Map<String, dynamic>>.from(note['checklist'])
+            'checklist': note['checklists'] != null
+                ? List<Map<String, dynamic>>.from(note['checklists'])
                 : [],
           };
         }).toList());
@@ -185,7 +189,8 @@ class _KeepNoteScreenState extends State<KeepNoteScreen> {
                     description: note['description'] ?? '',
                     isPinned: note['is_pinned'] ?? false,
                     reminderTime: note['reminder_time'] != null
-                        ? DateTime.parse(note['reminder_time'])
+                        ? DateTime.tryParse(
+                            note['reminder_time']) // Safely parse
                         : null,
                     checklist: note['checklist'] ?? [],
                     onSave: (title, description, isPinned, reminderTime,

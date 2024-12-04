@@ -26,11 +26,13 @@ class NoteGrid extends StatelessWidget {
       itemCount: notes.length,
       itemBuilder: (context, index) {
         final note = notes[index];
+        final noteId = note['_id']; // Extract noteId from the note data
 
         return NoteCard(
           note: note,
           onView: () => onView(note),
           onPinToggle: () => onPinToggle(note),
+          noteId: noteId, // Pass the noteId to NoteCard
         );
       },
     );
