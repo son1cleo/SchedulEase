@@ -33,3 +33,4 @@ This project implements **4** design patterns:
 2. Strategy
 3. Decorator
 4. Builder
+5. Proxy

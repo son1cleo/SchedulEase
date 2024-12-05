@@ -106,20 +106,18 @@ exports.getTasks = async (req, res) => {
     const tasks = await Task.find({ user_id })
       .sort({ createdAt: -1 });
 
-    if (tasks.length === 0) {
-      return res.status(404).json({ message: 'No tasks found for this user' });
-    }
+    if (tasks.length >= 0) {
+      // For each task, if it is of type 'Checklist', manually populate the 'details' field
+      for (let task of tasks) {
+        if (task.type === 'Checklist' && Array.isArray(task.details)) {
+          // Find all ChecklistItem documents by their ObjectIds in the 'details' array
+          const checklistItems = await ChecklistItem.find({
+            '_id': { $in: task.details }  // Match all ObjectIds in the 'details' array
+          }).select('item completed');  // Only select 'item' and 'completed' fields
 
-    // For each task, if it is of type 'Checklist', manually populate the 'details' field
-    for (let task of tasks) {
-      if (task.type === 'Checklist' && Array.isArray(task.details)) {
-        // Find all ChecklistItem documents by their ObjectIds in the 'details' array
-        const checklistItems = await ChecklistItem.find({
-          '_id': { $in: task.details }  // Match all ObjectIds in the 'details' array
-        }).select('item completed');  // Only select 'item' and 'completed' fields
-
-        // Replace the 'details' array with the populated checklist items
-        task.details = checklistItems;
+          // Replace the 'details' array with the populated checklist items
+          task.details = checklistItems;
+        }
       }
     }
 
