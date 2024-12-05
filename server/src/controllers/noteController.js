@@ -1,4 +1,3 @@
-// noteController.js
 const Note = require('../models/note');
 const Reminder = require('../models/reminder');
 const ChecklistItem = require('../models/checkListItem');
@@ -7,19 +6,24 @@ const mongoose = require('mongoose');
 // Create a new note with checklists and reminder
 exports.createNote = async (req, res) => {
   try {
-    const { user_id, title, description, checklists, is_pinned, reminder_time } = req.body;
+    const { user_id, title, description, checklist, is_pinned, reminder_time } = req.body;
+    console.log("Request body:", req.body);
+
+    // Validate required fields
+    if (!user_id || !title || !description) {
+      return res.status(400).json({ message: 'Missing required fields: user_id, title, and description are required' });
+    }
 
     // Handle checklist creation if provided
     let checklistItemIds = [];
-    if (checklists && Array.isArray(checklists)) {
-      // Correctly format the checklist item as string and boolean
+    if (checklist && Array.isArray(checklist)) {
+      // Validate that each checklist item is properly formatted
       const checklistItems = await ChecklistItem.insertMany(
-        checklists.map(item => ({
-          item: item.item,  // item is a string
-          completed: item.completed || false
+        checklist.map(item => ({
+          item: item.item,  // item must be a string
+          completed: item.completed || false // default completed to false
         }))
       );
-
       checklistItemIds = checklistItems.map(item => item._id);
     }
 
@@ -36,30 +40,41 @@ exports.createNote = async (req, res) => {
     // Save the note and get the saved note's ID
     await note.save();
 
-    // Handle reminder creation if provided
+    // Handle reminder creation if reminder_time is provided
     let reminderId = null;
     if (reminder_time) {
       const reminder = new Reminder({
         user_id,
-        note_id: note._id,  // Now you can reference note._id after saving the note
+        note_id: note._id,  // Reference to the created note
         reminder_time,
       });
-      await reminder.save();
-      reminderId = reminder._id;
+
+      // Save the reminder and associate with the note
+      const savedReminder = await reminder.save();
+      reminderId = savedReminder._id;
     }
 
-    // If reminderId is available, add it to the note
+    // Update the note with the reminder ID, if applicable
     if (reminderId) {
-      note.reminders = [reminderId];
-      await note.save();  // Save the note again to add the reminder
+      note.reminder_id = reminderId;
+      await note.save();
     }
 
-    res.status(201).json(note);
-  } catch (error) {
-    console.error('Error creating note:', error);
-    res.status(500).json({ error: error.message });
+    // Return the created note along with the reminder (if created)
+    return res.status(201).json({
+      message: 'Note created successfully',
+      note: {
+        ...note._doc,
+        reminder: reminderId ? { _id: reminderId, reminder_time } : null,
+      }
+    });
+
+  } catch (err) {
+    console.error('Error creating note:', err);
+    return res.status(500).json({ message: 'Internal Server Error', error: err.message });
   }
 };
+
 
 
 // Fetch all notes with checklists and reminders
@@ -88,84 +103,79 @@ exports.getNotes = async (req, res) => {
 };
 
 // Update an existing note
+
 exports.updateNote = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { title, description, is_pinned, reminder_time, checklists } = req.body;
+    // Validate noteId
+    const noteId = req.params.id;
+    const updatedNoteData = req.body;
 
-    const note = await Note.findById(id);
-    if (!note) {
-      return res.status(404).json({ message: 'Note not found' });
+    // Check if the noteId is valid
+    if (!mongoose.Types.ObjectId.isValid(noteId)) {
+      console.log("Invalid Note ID:", noteId);
+      return res.status(400).json({ message: "Invalid Note ID" });
     }
 
-    // Update basic fields
+    // Find the note to be updated
+    const note = await Note.findById(noteId);
+    if (!note) {
+      return res.status(404).json({ message: "Note not found" });
+    }
+
+    // Destructure updated data
+    const { title, description, is_pinned, reminder_time, checklist } = updatedNoteData;
+
+    // Update the note's general data
     note.title = title || note.title;
     note.description = description || note.description;
     note.is_pinned = is_pinned !== undefined ? is_pinned : note.is_pinned;
-    note.updated_at = new Date();
 
-    // Handle reminder updates
+    // Handle reminder_time - update the reminder if provided
     if (reminder_time) {
-      let reminder = await Reminder.findOne({ note_id: id });
+      // Check if the note already has a reminder
+      let reminder = await Reminder.findOne({ note_id: note._id });
+      
       if (reminder) {
+        // If a reminder exists, update it
         reminder.reminder_time = reminder_time;
         await reminder.save();
       } else {
+        // If no reminder exists, create a new one
         reminder = new Reminder({
-          user_id: note.user_id,
-          note_id: id,
+          user_id: note.user_id,  // Assuming user_id is available in the note
+          note_id: note._id,
           reminder_time,
         });
         await reminder.save();
       }
-    } else {
-      await Reminder.deleteOne({ note_id: id });
     }
 
-    // Handle checklist updates
-    if (Array.isArray(checklists)) {
-      // Insert new checklist items if provided
-      const newChecklistItems = checklists
-        .filter((item) => !item._id && item.item) // Ensure each item has 'item' and 'completed'
-        .map((item) => ({ item: item.item, completed: item.completed || false }));
-      const insertedChecklistItems = await ChecklistItem.insertMany(newChecklistItems);
-
-      // Update existing checklist items
-      const existingChecklistItems = checklists.filter((item) => item._id);
-      for (const checklistItem of existingChecklistItems) {
-        if (checklistItem.item) {  // Ensure 'item' field is present
-          await ChecklistItem.findByIdAndUpdate(checklistItem._id, {
-            item: checklistItem.item,
-            completed: checklistItem.completed,
-          });
-        } else {
-          return res.status(400).json({ error: 'Item is required for checklist update' });
-        }
-      }
-
-      // Combine new and existing checklist item IDs
-      const allChecklistIds = [
-        ...existingChecklistItems.map((item) => item._id),
-        ...insertedChecklistItems.map((item) => item._id),
-      ];
-      note.checklists = allChecklistIds;
+    // Handle checklist update - assuming you want to update the checklist items
+    if (Array.isArray(checklist)) {
+      // Insert or update checklist items as needed
+      const checklistItems = await ChecklistItem.insertMany(
+        checklist.map(item => ({
+          item: item.item,
+          completed: item.completed || false,
+        }))
+      );
+      note.checklists = checklistItems.map(item => item._id);
     }
 
+    // Save the updated note
     await note.save();
 
-    const updatedChecklist = await ChecklistItem.find({ _id: { $in: note.checklists } });
-    const reminders = await Reminder.find({ note_id: id });
-
-    res.status(200).json({
-      ...note.toObject(),
-      checklist: updatedChecklist,
-      reminders,
-    });
+    // Respond with the updated note
+    res.status(200).json(note);
+    
   } catch (error) {
-    console.error('Error updating note:', error.message);
-    res.status(400).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: 'Internal server error', error: error.message });
   }
 };
+
+
+
 
 
 // Delete a note and its related reminders and checklists

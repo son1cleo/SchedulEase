@@ -41,6 +41,7 @@ class NoteService {
 
   Future<void> updateNote(String noteId, Map<String, dynamic> noteData) async {
     try {
+      print('Updating note with data: $noteData');
       final response = await http.put(
         Uri.parse('$baseUrl/notes/$noteId'),
         headers: {'Content-Type': 'application/json'},
