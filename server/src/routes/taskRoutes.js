@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const taskController = require('../controllers/taskController');
 const mongoose = require('mongoose');
+const authMiddleware = require('../middleware/auth');
+const taskCountController = require('../controllers/taskCountController');
+const auth = require('../middleware/auth');
 
 // Middleware to validate ObjectId parameters
 const validateObjectId = (req, res, next) => {
@@ -20,6 +23,12 @@ router.get('/user/:user_id', validateObjectId, taskController.getTasks); // Get 
 router.post('/', taskController.createTask); // Create a new task
 router.put('/:id', validateObjectId, taskController.updateTask); // Update a task by id
 router.delete('/:id', validateObjectId, taskController.deleteTask); // Delete a task by id
+
+
+router.get('/task-count/:user_id', validateObjectId, taskCountController.getTaskCount);
+router.post('/task-count', validateObjectId, taskCountController.createTaskCount);
+router.put('/task-count/:user_id', validateObjectId, taskCountController.updateTaskCount);
+
 
 module.exports = router;
 

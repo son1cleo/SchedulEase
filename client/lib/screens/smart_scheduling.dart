@@ -3,6 +3,7 @@ import 'package:client/responsive.dart';
 import 'package:client/services/task_service.dart'; // Import the service file
 import 'package:client/providers/user_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:client/services/task_service_proxy.dart';
 
 class SmartSchedulingScreen extends StatefulWidget {
   @override
@@ -10,8 +11,10 @@ class SmartSchedulingScreen extends StatefulWidget {
 }
 
 class _SmartSchedulingScreenState extends State<SmartSchedulingScreen> {
-  late TaskService taskService;
+  late TaskLimitProxy taskProxy;
   List<Map<String, dynamic>> tasks = [];
+  int taskCount = 0;
+  String subscriptionStatus = "Inactive";
   String searchQuery = "";
   String filterStatus = "All";
 
@@ -20,7 +23,10 @@ class _SmartSchedulingScreenState extends State<SmartSchedulingScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
-      taskService = TaskService(userProvider: userProvider);
+      taskProxy = TaskLimitProxy(
+        taskService: TaskService(userProvider: userProvider),
+        userProvider: userProvider,
+      );
       _fetchTasks();
     });
   }
@@ -34,9 +40,14 @@ class _SmartSchedulingScreenState extends State<SmartSchedulingScreen> {
         throw Exception("User is not authenticated.");
       }
 
-      final fetchedTasks = await taskService.getTasks(userId);
+      // Fetch tasks and task count using the proxy
+      final result = await taskProxy.getTasks(userId);
+
       setState(() {
-        tasks = fetchedTasks;
+        tasks = result['tasks'] ?? [];
+        taskCount = result['task_count'] ?? 0;
+        subscriptionStatus =
+            userProvider.user!['subscription_status'] ? 'Active' : 'Inactive';
       });
     } catch (e) {
       print("Error fetching tasks: $e");
@@ -110,7 +121,7 @@ class _SmartSchedulingScreenState extends State<SmartSchedulingScreen> {
                                               updatedDetails[index]
                                                   ['completed'] = value;
 
-                                              await taskService.updateTask(
+                                              await taskProxy.updateTask(
                                                 task['_id'],
                                                 {
                                                   'details': updatedDetails,
@@ -126,7 +137,7 @@ class _SmartSchedulingScreenState extends State<SmartSchedulingScreen> {
 
                                               if (allCompleted) {
                                                 // Update the task status to "Completed"
-                                                await taskService.updateTask(
+                                                await taskProxy.updateTask(
                                                   task['_id'],
                                                   {'status': 'Completed'},
                                                 );
@@ -212,7 +223,7 @@ class _SmartSchedulingScreenState extends State<SmartSchedulingScreen> {
   // Function to update task status
   void _updateTaskStatus(Map<String, dynamic> task, String status) async {
     try {
-      final updatedTask = await taskService.updateTask(task['_id'], {
+      final updatedTask = await taskProxy.updateTask(task['_id'], {
         'status': status,
       });
       setState(() {
@@ -230,7 +241,7 @@ class _SmartSchedulingScreenState extends State<SmartSchedulingScreen> {
   // Function to delete task
   void _deleteTask(String id) async {
     try {
-      await taskService.deleteTask(id);
+      await taskProxy.deleteTask(id);
       setState(() {
         tasks.removeWhere((task) => task['_id'] == id);
       });
@@ -438,8 +449,6 @@ class _SmartSchedulingScreenState extends State<SmartSchedulingScreen> {
                                 setState(() {
                                   checklist.add(value);
                                 });
-                                _fetchTasks();
-                                _fetchTasks();
                               },
                             ),
                           ],
@@ -490,9 +499,6 @@ class _SmartSchedulingScreenState extends State<SmartSchedulingScreen> {
                             },
                           ),
                         ),
-                      if (scheduleTimes.isEmpty)
-                        Text('Please select at least one time.',
-                            style: TextStyle(color: Colors.red)),
                     ],
                   ),
                 ),
@@ -507,7 +513,7 @@ class _SmartSchedulingScreenState extends State<SmartSchedulingScreen> {
                     if (_formKey.currentState!.validate() &&
                         scheduleTimes.isNotEmpty) {
                       try {
-                        final newTask = await taskService.createTask({
+                        final newTask = await taskProxy.createTask({
                           'title': title,
                           'type': type,
                           'details':
@@ -518,13 +524,25 @@ class _SmartSchedulingScreenState extends State<SmartSchedulingScreen> {
                         });
                         setState(() {
                           tasks.add(newTask);
+                          taskCount = taskCount + 1;
                         });
-                        // Refresh tasks after successful creation
                         _fetchTasks();
-
                         Navigator.pop(context);
                       } catch (e) {
-                        print("Error creating task: $e");
+                        // Show error message if limit is reached
+                        showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: Text("Subscription Required"),
+                            content: Text(e.toString()),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: Text("Close"),
+                              ),
+                            ],
+                          ),
+                        );
                       }
                     }
                   },
