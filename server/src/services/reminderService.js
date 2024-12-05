@@ -1,6 +1,6 @@
-const NoteReminder = require('../src/models/NoteReminder');
-const ScheduleReminder = require('../src/models/ScheduleReminder');
-const ReminderSubject = require('../src/observer/reminderSubject');
+const NoteReminder = require('../models/noteReminder');
+const ScheduleReminder = require('../models/scheduleReminder');
+const ReminderSubject = require('../observers/reminderObserver');
 
 class ReminderService extends ReminderSubject {
   async createNoteReminder(note_id, reminder_time) {

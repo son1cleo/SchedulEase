@@ -34,3 +34,4 @@ This project implements **4** design patterns:
 3. Decorator
 4. Builder
 5. Proxy
+6. Observer
