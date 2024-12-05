@@ -28,7 +28,7 @@ The primary goal of this project is to create a productivity application that en
 - General Users who want an easy-to-use tool to handle personal and professional tasks and reminders.
 
 ## Design Patterns
-This project implements **4** design patterns:
+This project implements **6** design patterns:
 1. Singleton
 2. Strategy
 3. Decorator
