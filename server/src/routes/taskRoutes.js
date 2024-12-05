@@ -27,7 +27,7 @@ router.delete('/:id', validateObjectId, taskController.deleteTask); // Delete a 
 
 router.get('/task-count/:user_id', validateObjectId, taskCountController.getTaskCount);
 router.post('/task-count', validateObjectId, taskCountController.createTaskCount);
-router.put('/task-count/:user_id', validateObjectId, taskCountController.updateTaskCount);
+router.put('/task-count/:userId', validateObjectId, taskCountController.updateTaskCount);
 
 
 module.exports = router;

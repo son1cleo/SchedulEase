@@ -4,6 +4,7 @@ import 'package:client/services/task_service.dart'; // Import the service file
 import 'package:client/providers/user_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:client/services/task_service_proxy.dart';
+import '../screens/subscription.dart';
 
 class SmartSchedulingScreen extends StatefulWidget {
   @override
@@ -37,10 +38,9 @@ class _SmartSchedulingScreenState extends State<SmartSchedulingScreen> {
       final userId = userProvider.userId;
 
       if (userId == null || userId.isEmpty) {
-        throw Exception("User is not authenticated.");
+        throw Exception("User ID is required.");
       }
 
-      // Fetch tasks and task count using the proxy
       final result = await taskProxy.getTasks(userId);
 
       setState(() {
@@ -530,19 +530,35 @@ class _SmartSchedulingScreenState extends State<SmartSchedulingScreen> {
                         Navigator.pop(context);
                       } catch (e) {
                         // Show error message if limit is reached
-                        showDialog(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: Text("Subscription Required"),
-                            content: Text(e.toString()),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: Text("Close"),
-                              ),
-                            ],
-                          ),
-                        );
+                        if (e.toString().contains('Task creation limit')) {
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: Text("Subscription Required"),
+                              content: Text(
+                                  "Task creation limit reached. Please subscribe to add more tasks."),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(
+                                      context), // Close the dialog
+                                  child: Text("Close"),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    // Navigate to the SubscriptionScreen
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                              SubscriptionScreen()),
+                                    );
+                                  },
+                                  child: Text("Subscribe Now"),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
                       }
                     }
                   },

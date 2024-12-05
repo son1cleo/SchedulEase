@@ -10,6 +10,10 @@ class TaskService {
 
   // Fetch tasks for the user
   Future<List<Map<String, dynamic>>> getTasks(String userId) async {
+    if (userId.isEmpty) {
+      throw Exception("User ID is required.");
+    }
+
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/user/$userId'),
@@ -18,6 +22,7 @@ class TaskService {
           'Content-Type': 'application/json',
         },
       );
+
       if (response.statusCode == 200) {
         return List<Map<String, dynamic>>.from(json.decode(response.body));
       } else {
@@ -29,7 +34,7 @@ class TaskService {
     }
   }
 
-  // Create a new task
+  // Create a new task at taskSrevice
   Future<Map<String, dynamic>> createTask(Map<String, dynamic> taskData) async {
     try {
       // Add 'user_id' to the task data from the UserProvider

@@ -3,18 +3,35 @@ const TaskCount = require('../models/task_count');
 
 // Get the task count for a specific user
 const getTaskCount = async (req, res) => {
-  const { userId } = req.params;
+  const { user_id } = req.params;
+
+  if (!user_id) {
+    return res.status(400).json({ message: 'User ID is required.' });
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(user_id)) {
+    return res.status(400).json({ message: 'Invalid user ID.' });
+  }
 
   try {
-    const taskCount = await TaskCount.findOne({ user_id: userId });
+    let taskCount = await TaskCount.findOne({ user_id });
+
+    // If no task count is found, create a new one with a default task count of 0
     if (!taskCount) {
-      return res.status(404).json({ message: 'Task count not found for the user.' });
+      taskCount = new TaskCount({ user_id, task_count: 0 });
+      await taskCount.save();
     }
+
     res.status(200).json(taskCount);
   } catch (error) {
-    res.status(500).json({ message: 'Error retrieving task count.', error });
+    console.error('Error retrieving or creating task count:', error.message);
+    res.status(500).json({
+      message: 'Error retrieving or creating task count.',
+      error: error.message,
+    });
   }
 };
+
 
 // Create a new task count entry for a user
 const createTaskCount = async (req, res) => {
@@ -37,7 +54,10 @@ const createTaskCount = async (req, res) => {
 // Update the task count for a specific user
 const updateTaskCount = async (req, res) => {
   const { userId } = req.params;
-  const { incrementBy = 1 } = req.body; // Optional increment value, default is 1
+  const { incrementBy = 1 } = req.body;
+
+  console.log("User ID received:", userId); // Log userId
+  console.log("Increment by:", incrementBy); // Log increment value
 
   try {
     const taskCount = await TaskCount.findOneAndUpdate(
@@ -47,14 +67,17 @@ const updateTaskCount = async (req, res) => {
     );
 
     if (!taskCount) {
+      console.error("Task count not found for user:", userId); // Add logging
       return res.status(404).json({ message: 'Task count not found for the user.' });
     }
 
     res.status(200).json({ message: 'Task count updated successfully.', taskCount });
   } catch (error) {
+    console.error("Error updating task count:", error); // Add logging
     res.status(500).json({ message: 'Error updating task count.', error });
   }
 };
+
 
 module.exports = {
   getTaskCount,

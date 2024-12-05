@@ -10,11 +10,13 @@ class TaskLimitProxy {
   TaskLimitProxy({required this.taskService, required this.userProvider});
 
   Future<Map<String, dynamic>> getTasks(String userId) async {
+    if (userId.isEmpty) {
+      throw Exception("User ID is required.");
+    }
+
     try {
-      // Fetch tasks
       final tasks = await taskService.getTasks(userId);
 
-      // Fetch task count
       final response = await http.get(
         Uri.parse('${taskService.baseUrl}/task-count/$userId'),
         headers: {
@@ -23,13 +25,11 @@ class TaskLimitProxy {
         },
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
-        final int taskCount = data['task_count'] ?? 0;
-
         return {
           'tasks': tasks,
-          'task_count': taskCount,
+          'task_count': data['task_count'] ?? 0,
         };
       } else {
         throw Exception("Failed to fetch task count.");
@@ -41,7 +41,7 @@ class TaskLimitProxy {
 
   Future<Map<String, dynamic>> createTask(Map<String, dynamic> taskData) async {
     try {
-      // Step 1: Fetch the current task count and subscription status
+      // Fetch the current task count and subscription status
       final response = await http.get(
         Uri.parse(
             '${taskService.baseUrl}/task-count/${taskService.userProvider.userId}'),
@@ -50,8 +50,9 @@ class TaskLimitProxy {
           'Content-Type': 'application/json',
         },
       );
+      print(response.body);
 
-      if (response.statusCode != 200) {
+      if (response.statusCode == 400 || response.statusCode == 500) {
         throw Exception('Failed to fetch task count.');
       }
 
@@ -61,45 +62,29 @@ class TaskLimitProxy {
           userProvider.user!['subscription_status'] ?? false;
       //userProvider.user!['subscription_status'] ? 'Active' : 'Inactive'
 
-      // Step 2: Check if task creation is allowed
-      if (!isSubscribed && taskCount >= 3) {
+      // Check if task creation is allowed
+      if (!isSubscribed && taskCount >= 100) {
         throw Exception(
             'Task creation limit reached. Please subscribe to add more tasks.');
       }
-
-      // Step 3: Create the task
+      print(taskCount);
+      // Create the task
       final newTask = await taskService.createTask(taskData);
 
       // Update or create the task count
-      if (taskCount == 0) {
-        // Task count is 0; send POST request
-        final postResponse = await http.post(
-          Uri.parse('${taskService.baseUrl}/task-count'),
-          headers: {
-            'Authorization': 'Bearer ${taskService.userProvider.token}',
-            'Content-Type': 'application/json',
-          },
-          body: json.encode({'user_id': taskService.userProvider.userId}),
-        );
+      // Task count is not 0; send PUT request
+      final putResponse = await http.put(
+        Uri.parse(
+            '${taskService.baseUrl}/task-count/${taskService.userProvider.userId}'),
+        headers: {
+          'Authorization': 'Bearer ${taskService.userProvider.token}',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({'incrementBy': 1}),
+      );
 
-        if (postResponse.statusCode != 201) {
-          throw Exception('Failed to create task count.');
-        }
-      } else {
-        // Task count is not 0; send PUT request
-        final putResponse = await http.put(
-          Uri.parse(
-              '${taskService.baseUrl}/task-count/${taskService.userProvider.userId}'),
-          headers: {
-            'Authorization': 'Bearer ${taskService.userProvider.token}',
-            'Content-Type': 'application/json',
-          },
-          body: json.encode({'task_count': taskCount + 1}),
-        );
-
-        if (putResponse.statusCode != 200) {
-          throw Exception('Failed to update task count.');
-        }
+      if (putResponse.statusCode != 200) {
+        throw Exception('Failed to update task count.');
       }
 
       return newTask;
